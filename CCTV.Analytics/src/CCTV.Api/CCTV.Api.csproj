@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CCTV.Application\CCTV.Application.csproj" />
+    <ProjectReference Include="..\CCTV.Infrastructure\CCTV.Infrastructure.csproj" />
+    <ProjectReference Include="..\CCTV.Shared\CCTV.Shared.csproj" />
+    <ProjectReference Include="..\CCTV.Contracts\CCTV.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

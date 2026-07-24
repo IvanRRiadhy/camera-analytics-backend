@@ -1,0 +1,12 @@
+bin/
+obj/
+.vs/
+.vscode/
+.idea/
+*.user
+*.userosscache
+*.sln.docstates
+out/
+publish/
+appsettings.Development.json
+appsettings.Production.json

@@ -1,0 +1,6 @@
+@CCTV.Api_HostAddress = http://localhost:5100
+
+GET {{CCTV.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
