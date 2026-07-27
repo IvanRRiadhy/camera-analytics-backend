@@ -1,7 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\CCTV.Domain\CCTV.Domain.csproj" />
+    <ProjectReference Include="..\CCTV.Contracts\CCTV.Contracts.csproj" />
     <ProjectReference Include="..\CCTV.Shared\CCTV.Shared.csproj" />
   </ItemGroup>
 
