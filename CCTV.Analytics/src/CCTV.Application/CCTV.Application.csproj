@@ -4,6 +4,7 @@
     <ProjectReference Include="..\CCTV.Domain\CCTV.Domain.csproj" />
     <ProjectReference Include="..\CCTV.Contracts\CCTV.Contracts.csproj" />
     <ProjectReference Include="..\CCTV.Shared\CCTV.Shared.csproj" />
+    <ProjectReference Include="..\CCTV.Messaging.Contracts\CCTV.Messaging.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

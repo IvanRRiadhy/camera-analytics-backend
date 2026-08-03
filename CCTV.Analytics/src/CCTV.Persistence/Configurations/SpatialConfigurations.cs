@@ -26,11 +26,6 @@ public class SiteConfiguration : TenantEntityConfiguration<Site>
             .WithOne(b => b.Site)
             .HasForeignKey(b => b.SiteId)
             .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(s => s.Cameras)
-            .WithOne(c => c.Site)
-            .HasForeignKey(c => c.SiteId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -67,9 +62,33 @@ public class FloorConfiguration : TenantEntityConfiguration<Floor>
 
         builder.HasIndex(f => new { f.ApplicationId, f.BuildingId, f.FloorLevel }).IsUnique();
 
-        builder.HasMany(f => f.Cameras)
-            .WithOne(c => c.Floor)
-            .HasForeignKey(c => c.FloorId)
+        builder.HasMany(f => f.Rooms)
+            .WithOne(r => r.Floor)
+            .HasForeignKey(r => r.FloorId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class RoomConfiguration : TenantEntityConfiguration<Room>
+{
+    public override void Configure(EntityTypeBuilder<Room> builder)
+    {
+        base.Configure(builder);
+
+        builder.ToTable("Rooms");
+
+        builder.Property(r => r.Name).IsRequired().HasMaxLength(150);
+        builder.Property(r => r.Code).IsRequired().HasMaxLength(50);
+        builder.Property(r => r.Description).HasMaxLength(500);
+        builder.Property(r => r.SortOrder).HasDefaultValue(0);
+        builder.Property(r => r.IsActive).HasDefaultValue(true);
+
+        builder.HasIndex(r => new { r.ApplicationId, r.FloorId, r.Code }).IsUnique();
+        builder.HasIndex(r => new { r.ApplicationId, r.FloorId, r.SortOrder });
+
+        builder.HasMany(r => r.Cameras)
+            .WithOne(c => c.Room)
+            .HasForeignKey(c => c.RoomId)
             .OnDelete(DeleteBehavior.SetNull);
     }
 }
@@ -91,7 +110,7 @@ public class CameraConfiguration : TenantEntityConfiguration<Camera>
         builder.Property(c => c.ScaleFactorMetersPerPixel).HasColumnType("decimal(10,6)");
 
         builder.HasIndex(c => new { c.ApplicationId, c.DeviceCode }).IsUnique();
-        builder.HasIndex(c => new { c.ApplicationId, c.SiteId });
+        builder.HasIndex(c => new { c.ApplicationId, c.RoomId });
         builder.HasIndex(c => new { c.ApplicationId, c.Status });
 
         builder.HasMany(c => c.Zones)

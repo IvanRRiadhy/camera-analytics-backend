@@ -5,11 +5,8 @@ namespace CCTV.Domain.Entities.Spatial;
 
 public class Camera : TenantEntity
 {
-    public Guid SiteId { get; set; }
-    public Site Site { get; set; } = null!;
-
-    public Guid? FloorId { get; set; }
-    public Floor? Floor { get; set; }
+    public Guid? RoomId { get; set; }
+    public Room? Room { get; set; }
 
     public string Name { get; set; } = string.Empty;
     public string DeviceCode { get; set; } = string.Empty;

@@ -1,3 +1,4 @@
+using CCTV.Infrastructure.Messaging.RabbitMQ.Constants;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Options;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
@@ -79,37 +80,116 @@ public class RabbitMqPersistentConnection : IRabbitMqPersistentConnection
         using var channel = _connection!.CreateModel();
 
         // 1. Declare Topic Exchanges
-        string[] topicExchanges = { "cctv.engine", "cctv.analytics", "cctv.notification", "cctv.system", "cctv.deadletter" };
+        string[] topicExchanges =
+        {
+            RabbitMqTopology.Exchanges.Engine,
+            RabbitMqTopology.Exchanges.EngineCommands,
+            RabbitMqTopology.Exchanges.EngineRegister,
+            RabbitMqTopology.Exchanges.EngineHeartbeat,
+            RabbitMqTopology.Exchanges.Analytics,
+            RabbitMqTopology.Exchanges.Notification,
+            RabbitMqTopology.Exchanges.System,
+            RabbitMqTopology.Exchanges.DeadLetter
+        };
+
         foreach (var exchange in topicExchanges)
         {
             channel.ExchangeDeclare(exchange: exchange, type: ExchangeType.Topic, durable: _options.QueueDurability, autoDelete: false);
         }
 
-        // 2. Declare 4 Core Queues + DLQs
-        DeclareQueueWithDlq(channel, "engine.events.queue", "engine.events.dlq", "cctv.engine", new[] { "engine.register", "engine.heartbeat" });
-        DeclareQueueWithDlq(channel, "engine.commands.queue", "engine.commands.dlq", "cctv.engine", new[] { "camera.assign", "pipeline.assign", "analytics.config" });
-        DeclareQueueWithDlq(channel, "analytics.events.queue", "analytics.events.dlq", "cctv.analytics", new[] { "analytics.event", "analytics.track", "analytics.visit", "analytics.evidence" });
-        DeclareQueueWithDlq(channel, "notification.dispatches.queue", "notification.dispatches.dlq", "cctv.notification", new[] { "notification.send" });
+        // 2. Declare Queues + DLQs & Bindings
+        // 2a. Engine Events / Registration Queue
+        DeclareQueueWithDlq(
+            channel,
+            RabbitMqTopology.Queues.EngineEvents,
+            RabbitMqTopology.DeadLetterQueues.EngineEventsDlq,
+            new[]
+            {
+                (RabbitMqTopology.Exchanges.Engine, "engine.register"),
+                (RabbitMqTopology.Exchanges.Engine, "engine.register.#"),
+                (RabbitMqTopology.Exchanges.Engine, "engine.events.#"),
+                (RabbitMqTopology.Exchanges.EngineRegister, "#"),
+                (RabbitMqTopology.Exchanges.EngineRegister, "engine.register.#")
+            });
+
+        // 2b. Engine Telemetry Heartbeat Queue
+        DeclareQueueWithDlq(
+            channel,
+            RabbitMqTopology.Queues.EngineHeartbeat,
+            RabbitMqTopology.DeadLetterQueues.EngineHeartbeatDlq,
+            new[]
+            {
+                (RabbitMqTopology.Exchanges.Engine, "engine.heartbeat"),
+                (RabbitMqTopology.Exchanges.Engine, "engine.heartbeat.#"),
+                (RabbitMqTopology.Exchanges.EngineHeartbeat, "#"),
+                (RabbitMqTopology.Exchanges.EngineHeartbeat, "engine.heartbeat.#")
+            });
+
+        // 2c. Engine Remote Control Commands Queue
+        DeclareQueueWithDlq(
+            channel,
+            RabbitMqTopology.Queues.EngineCommands,
+            RabbitMqTopology.DeadLetterQueues.EngineCommandsDlq,
+            new[]
+            {
+                (RabbitMqTopology.Exchanges.EngineCommands, "engine.commands.#"),
+                (RabbitMqTopology.Exchanges.EngineCommands, "camera.assign"),
+                (RabbitMqTopology.Exchanges.EngineCommands, "pipeline.assign"),
+                (RabbitMqTopology.Exchanges.EngineCommands, "analytics.config"),
+                (RabbitMqTopology.Exchanges.Engine, "engine.commands.#")
+            });
+
+        // 2d. Analytics Events Queue
+        DeclareQueueWithDlq(
+            channel,
+            RabbitMqTopology.Queues.AnalyticsEvents,
+            RabbitMqTopology.DeadLetterQueues.AnalyticsEventsDlq,
+            new[]
+            {
+                (RabbitMqTopology.Exchanges.Analytics, "analytics.event"),
+                (RabbitMqTopology.Exchanges.Analytics, "analytics.event.#"),
+                (RabbitMqTopology.Exchanges.Analytics, "analytics.runtime.#"),
+                (RabbitMqTopology.Exchanges.Analytics, "analytics.runtime.snapshot"),
+                (RabbitMqTopology.Exchanges.Analytics, "analytics.#"),
+                (RabbitMqTopology.Exchanges.Analytics, "analytics.track"),
+                (RabbitMqTopology.Exchanges.Analytics, "analytics.visit"),
+                (RabbitMqTopology.Exchanges.Analytics, "analytics.evidence")
+            });
+
+        // 2e. Notification Dispatches Queue
+        DeclareQueueWithDlq(
+            channel,
+            RabbitMqTopology.Queues.NotificationDispatches,
+            RabbitMqTopology.DeadLetterQueues.NotificationDispatchesDlq,
+            new[]
+            {
+                (RabbitMqTopology.Exchanges.Notification, "notification.send"),
+                (RabbitMqTopology.Exchanges.Notification, "notification.send.#")
+            });
     }
 
-    private void DeclareQueueWithDlq(IModel channel, string queueName, string dlqName, string exchangeName, string[] routingKeys)
+    private void DeclareQueueWithDlq(
+        IModel channel,
+        string queueName,
+        string dlqName,
+        IEnumerable<(string Exchange, string RoutingKey)> bindings)
     {
         // Declare DLQ
         channel.QueueDeclare(queue: dlqName, durable: true, exclusive: false, autoDelete: false);
-        channel.QueueBind(queue: dlqName, exchange: "cctv.deadletter", routingKey: $"dlq.{queueName}");
+        channel.QueueBind(queue: dlqName, exchange: RabbitMqTopology.Exchanges.DeadLetter, routingKey: $"dlq.{queueName}");
 
         // Declare Main Queue with DLX arguments
         var args = new Dictionary<string, object>
         {
-            { "x-dead-letter-exchange", "cctv.deadletter" },
+            { "x-dead-letter-exchange", RabbitMqTopology.Exchanges.DeadLetter },
             { "x-dead-letter-routing-key", $"dlq.{queueName}" }
         };
 
         channel.QueueDeclare(queue: queueName, durable: _options.QueueDurability, exclusive: false, autoDelete: false, arguments: args);
 
-        foreach (var key in routingKeys)
+        foreach (var (exchange, routingKey) in bindings)
         {
-            channel.QueueBind(queue: queueName, exchange: exchangeName, routingKey: key);
+            channel.QueueBind(queue: queueName, exchange: exchange, routingKey: routingKey);
         }
     }
 

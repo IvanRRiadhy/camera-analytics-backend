@@ -13,5 +13,4 @@ public class Site : TenantEntity
     public string TimeZone { get; set; } = "UTC";
 
     public ICollection<Building> Buildings { get; set; } = new List<Building>();
-    public ICollection<Camera> Cameras { get; set; } = new List<Camera>();
 }

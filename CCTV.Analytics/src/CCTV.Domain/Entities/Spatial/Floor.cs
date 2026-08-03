@@ -11,5 +11,5 @@ public class Floor : TenantEntity
     public string Name { get; set; } = string.Empty;
     public string? FloorPlanImageUrl { get; set; }
 
-    public ICollection<Camera> Cameras { get; set; } = new List<Camera>();
+    public ICollection<Room> Rooms { get; set; } = new List<Room>();
 }

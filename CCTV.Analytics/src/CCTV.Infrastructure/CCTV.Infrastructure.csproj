@@ -1,10 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CCTV.Domain\CCTV.Domain.csproj" />
     <ProjectReference Include="..\CCTV.Application\CCTV.Application.csproj" />
     <ProjectReference Include="..\CCTV.Persistence\CCTV.Persistence.csproj" />
     <ProjectReference Include="..\CCTV.Shared\CCTV.Shared.csproj" />
+    <ProjectReference Include="..\CCTV.Messaging.Contracts\CCTV.Messaging.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

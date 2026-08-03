@@ -2,6 +2,7 @@ using System.Diagnostics;
 using CCTV.Application.Abstractions.Messaging;
 using CCTV.Application.Engine.Interfaces;
 using CCTV.Contracts.Engine;
+using CCTV.Infrastructure.Messaging.RabbitMQ.Constants;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -26,18 +27,20 @@ public class EngineRegistrationConsumerHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("[+] Starting EngineRegistrationConsumerHostedService listening on queue 'engine.events.queue'...");
+        _logger.LogInformation("[+] Starting EngineRegistrationConsumerHostedService listening on queue '{QueueName}'...", RabbitMqTopology.Queues.EngineEvents);
 
         await _messageConsumer.SubscribeAsync<EngineRegistrationRequest>(
-            queueName: "engine.events.queue",
+            queueName: RabbitMqTopology.Queues.EngineEvents,
             messageHandler: async (request, headers) =>
             {
                 var stopwatch = Stopwatch.StartNew();
 
                 _logger.LogInformation(
-                    "[-->] Received EngineRegistrationRequest. EngineId: {EngineId}, Hostname: {Hostname}, AppId: {ApplicationId}, CorrelationId: {CorrelationId}",
-                    request.EngineId,
+                    "[-->] Received EngineRegistrationRequest. InstanceId: {InstanceId}, Hostname: {Hostname}, GPU: {GpuModel}, VRAM: {TotalVramMb}MB, AppId: {ApplicationId}, CorrelationId: {CorrelationId}",
+                    request.InstanceId,
                     request.Hostname,
+                    request.GpuInfo?.DeviceName,
+                    request.GpuInfo?.TotalVramMb,
                     request.ApplicationId,
                     request.CorrelationId);
 
@@ -50,8 +53,8 @@ public class EngineRegistrationConsumerHostedService : BackgroundService
                 stopwatch.Stop();
 
                 _logger.LogInformation(
-                    "[<--] Successfully registered/updated EngineId: {EngineId} in {ElapsedMs}ms.",
-                    request.EngineId,
+                    "[<--] Successfully registered/updated InstanceId: {InstanceId} in {ElapsedMs}ms.",
+                    request.InstanceId,
                     stopwatch.ElapsedMilliseconds);
             },
             cancellationToken: stoppingToken);

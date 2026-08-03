@@ -13,11 +13,16 @@ public class AnalyticsModuleConfiguration : BaseEntityConfiguration<AnalyticsMod
         builder.ToTable("AnalyticsModules");
 
         builder.Property(m => m.ModuleCode).IsRequired().HasMaxLength(100);
-        builder.Property(m => m.Name).IsRequired().HasMaxLength(150);
+        builder.Property(m => m.DisplayName).IsRequired().HasMaxLength(150);
+        builder.Property(m => m.Category).IsRequired().HasMaxLength(50);
         builder.Property(m => m.Version).IsRequired().HasMaxLength(30);
         builder.Property(m => m.Vendor).HasMaxLength(100);
         builder.Property(m => m.Description).HasMaxLength(500);
-        builder.Property(m => m.RequiredMinCudaCapability).HasMaxLength(20);
+        builder.Property(m => m.PythonEntryPoint).HasMaxLength(250);
+        builder.Property(m => m.Icon).HasMaxLength(100);
+        builder.Property(m => m.DocumentationUrl).HasMaxLength(500);
+        builder.Property(m => m.MinimumCudaCapability).HasMaxLength(20);
+        builder.Property(m => m.Status).HasMaxLength(30);
 
         builder.HasIndex(m => new { m.ModuleCode, m.Version }).IsUnique();
 

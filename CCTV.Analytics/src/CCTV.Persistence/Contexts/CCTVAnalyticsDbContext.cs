@@ -31,6 +31,7 @@ public class CCTVAnalyticsDbContext : DbContext
     public DbSet<Site> Sites => Set<Site>();
     public DbSet<Building> Buildings => Set<Building>();
     public DbSet<Floor> Floors => Set<Floor>();
+    public DbSet<Room> Rooms => Set<Room>();
     public DbSet<Camera> Cameras => Set<Camera>();
     public DbSet<Zone> Zones => Set<Zone>();
     public DbSet<CameraGroup> CameraGroups => Set<CameraGroup>();
@@ -47,13 +48,22 @@ public class CCTVAnalyticsDbContext : DbContext
     public DbSet<EngineConnection> EngineConnections => Set<EngineConnection>();
     public DbSet<AnalyticsSession> AnalyticsSessions => Set<AnalyticsSession>();
     public DbSet<PipelineAssignment> PipelineAssignments => Set<PipelineAssignment>();
+    public DbSet<PipelineModuleAssignment> PipelineModuleAssignments => Set<PipelineModuleAssignment>();
+    public DbSet<PipelineHistory> PipelineHistories => Set<PipelineHistory>();
     public DbSet<EngineHeartbeat> EngineHeartbeats => Set<EngineHeartbeat>();
+    public DbSet<EngineCapability> EngineCapabilities => Set<EngineCapability>();
+    public DbSet<EngineHealthHistory> EngineHealthHistories => Set<EngineHealthHistory>();
 
     // Incident, Trajectory & Evidence
     public DbSet<AnalyticsEvent> AnalyticsEvents => Set<AnalyticsEvent>();
     public DbSet<TrackSummary> TrackSummaries => Set<TrackSummary>();
     public DbSet<ObjectVisit> ObjectVisits => Set<ObjectVisit>();
     public DbSet<DetectionEvidence> DetectionEvidences => Set<DetectionEvidence>();
+
+    // Runtime Observability State
+    public DbSet<EngineRuntime> EngineRuntimes => Set<EngineRuntime>();
+    public DbSet<PluginRuntime> PluginRuntimes => Set<PluginRuntime>();
+    public DbSet<AnalyticsRuntimeLog> AnalyticsRuntimeLogs => Set<AnalyticsRuntimeLog>();
     public DbSet<Alert> Alerts => Set<Alert>();
     public DbSet<Incident> Incidents => Set<Incident>();
     public DbSet<EventArchive> EventArchives => Set<EventArchive>();
@@ -80,7 +90,7 @@ public class CCTVAnalyticsDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
+ 
         // 1. Apply Parameterless Entity Configurations
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CCTVAnalyticsDbContext).Assembly);
 

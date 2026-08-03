@@ -113,6 +113,11 @@ namespace CCTV.Persistence.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWSEQUENTIALID()");
 
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -121,7 +126,8 @@ namespace CCTV.Persistence.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("DefaultParametersJson")
+                    b.Property<string>("DefaultConfigurationJson")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("DeletedAt")
@@ -131,36 +137,60 @@ namespace CCTV.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("DocumentationUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
-                    b.Property<bool>("IsGlobalActive")
-                        .HasColumnType("bit");
+                    b.Property<string>("MinimumCudaCapability")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("ModuleCode")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("PythonEntryPoint")
                         .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("RequiredMinCudaCapability")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<bool>("SupportsBatch")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("SupportsRealtime")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1144,6 +1174,93 @@ namespace CCTV.Persistence.Migrations
                     b.ToTable("TrackSummaries", (string)null);
                 });
 
+            modelBuilder.Entity("CCTV.Domain.Entities.Monitoring.AnalyticsRuntimeLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CameraId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EngineInstanceId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("InsertedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("JsonSnapshot")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MetricName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<double>("MetricValue")
+                        .HasColumnType("float");
+
+                    b.Property<string>("PipelineId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("PluginName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId", "CameraId", "TimestampUtc");
+
+                    b.HasIndex("ApplicationId", "PipelineId", "TimestampUtc");
+
+                    b.ToTable("AnalyticsRuntimeLogs", (string)null);
+                });
+
             modelBuilder.Entity("CCTV.Domain.Entities.Monitoring.DashboardMetric", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1281,6 +1398,249 @@ namespace CCTV.Persistence.Migrations
                     b.ToTable("DeviceHealths", (string)null);
                 });
 
+            modelBuilder.Entity("CCTV.Domain.Entities.Monitoring.EngineRuntime", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<float>("AverageLatencyMs")
+                        .HasColumnType("real");
+
+                    b.Property<string>("CpuModel")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<float>("CpuUtilization")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CudaVersion")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<float>("DiskUsage")
+                        .HasColumnType("real");
+
+                    b.Property<long>("DroppedFrames")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("EngineInstanceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EngineVersion")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("GpuDriver")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("GpuModel")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<float>("GpuUtilization")
+                        .HasColumnType("real");
+
+                    b.Property<string>("Hostname")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<float>("InferenceFps")
+                        .HasColumnType("real");
+
+                    b.Property<string>("IpAddress")
+                        .IsRequired()
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime>("LastHeartbeatUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("ProcessedFrames")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("PublishedEvents")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("QueueLength")
+                        .HasColumnType("int");
+
+                    b.Property<long>("RamTotalMb")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("RamUsedMb")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("ReconnectCount")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<float>("TemperatureC")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("VramTotalMb")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("VramUsedMb")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("WorkerNodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId", "EngineInstanceId")
+                        .IsUnique();
+
+                    b.ToTable("EngineRuntimes", (string)null);
+                });
+
+            modelBuilder.Entity("CCTV.Domain.Entities.Monitoring.PluginRuntime", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                    b.Property<Guid?>("AnalyticsModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<float>("AverageInferenceTimeMs")
+                        .HasColumnType("real");
+
+                    b.Property<float>("CpuUsagePercent")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<float>("CurrentFps")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("DroppedFrames")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Errors")
+                        .HasColumnType("int");
+
+                    b.Property<long>("EventsGenerated")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("FramesProcessed")
+                        .HasColumnType("bigint");
+
+                    b.Property<float>("GpuUsagePercent")
+                        .HasColumnType("real");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("LastEventTimestampUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<float>("MemoryUsageMb")
+                        .HasColumnType("real");
+
+                    b.Property<Guid>("PipelineAssignmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PluginName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("PluginVersion")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Warnings")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId", "PipelineAssignmentId", "PluginName");
+
+                    b.ToTable("PluginRuntimes", (string)null);
+                });
+
             modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.AnalyticsSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1356,6 +1716,65 @@ namespace CCTV.Persistence.Migrations
                     b.ToTable("AnalyticsSessions", (string)null);
                 });
 
+            modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.EngineCapability", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CapabilityCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("EngineInstanceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("SdkVersion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EngineInstanceId");
+
+                    b.ToTable("EngineCapabilities");
+                });
+
             modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.EngineConnection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1428,6 +1847,82 @@ namespace CCTV.Persistence.Migrations
                     b.ToTable("EngineConnections", (string)null);
                 });
 
+            modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.EngineHealthHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ActivePipelinesCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<float>("CpuUsagePercent")
+                        .HasColumnType("real");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("EngineInstanceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("FrameDropCount")
+                        .HasColumnType("int");
+
+                    b.Property<float>("GpuTemperatureC")
+                        .HasColumnType("real");
+
+                    b.Property<float>("GpuUsagePercent")
+                        .HasColumnType("real");
+
+                    b.Property<int>("HealthScore")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HealthState")
+                        .HasColumnType("int");
+
+                    b.Property<float>("InferenceFps")
+                        .HasColumnType("real");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TotalVramMb")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("VramUsedMb")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EngineInstanceId");
+
+                    b.ToTable("EngineHealthHistories");
+                });
+
             modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.EngineHeartbeat", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1435,11 +1930,17 @@ namespace CCTV.Persistence.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWSEQUENTIALID()");
 
+                    b.Property<int>("ActivePipelinesCount")
+                        .HasColumnType("int");
+
                     b.Property<int>("ActiveStreamCount")
                         .HasColumnType("int");
 
                     b.Property<Guid>("ApplicationId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<float>("CpuUsagePercent")
+                        .HasColumnType("real");
 
                     b.Property<decimal>("CpuUsagePercentage")
                         .HasPrecision(18, 4)
@@ -1465,6 +1966,12 @@ namespace CCTV.Persistence.Migrations
                     b.Property<int>("GpuMemoryUsedMb")
                         .HasColumnType("int");
 
+                    b.Property<float>("GpuTemperatureC")
+                        .HasColumnType("real");
+
+                    b.Property<float>("GpuUsagePercent")
+                        .HasColumnType("real");
+
                     b.Property<decimal>("GpuUsagePercentage")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(5,2)");
@@ -1476,6 +1983,10 @@ namespace CCTV.Persistence.Migrations
                     b.Property<Guid>("InstanceId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("InstanceIdString")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -1486,7 +1997,17 @@ namespace CCTV.Persistence.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<long>("SequenceNumber")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TelemetryJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("TimestampUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -1494,6 +2015,9 @@ namespace CCTV.Persistence.Migrations
 
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("VramUsedMb")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -1537,13 +2061,44 @@ namespace CCTV.Persistence.Migrations
                     b.Property<Guid>("EngineId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("EngineVersion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("GpuDeviceId")
                         .HasColumnType("int");
+
+                    b.Property<string>("GpuModel")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Hostname")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InstalledPluginsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("InstanceId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
+
+                    b.Property<DateTime>("LastHeartbeatUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OsPlatform")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Port")
                         .HasColumnType("int");
@@ -1551,15 +2106,27 @@ namespace CCTV.Persistence.Migrations
                     b.Property<int>("ProcessId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("RegisteredAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<int>("State")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("TotalRamMb")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalVramMb")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1589,16 +2156,26 @@ namespace CCTV.Persistence.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWSEQUENTIALID()");
 
+                    b.Property<string>("AnalyticsModules")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid>("ApplicationId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("AssignedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime>("AssignedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("AssignmentStatus")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<Guid>("CameraId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -1622,7 +2199,19 @@ namespace CCTV.Persistence.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
-                    b.Property<string>("PipelineParametersSnapshotJson")
+                    b.Property<string>("PipelineId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PipelineName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequiredCapabilities")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<byte[]>("RowVersion")
@@ -1630,8 +2219,17 @@ namespace CCTV.Persistence.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
-                    b.Property<Guid>("SessionId")
+                    b.Property<Guid?>("SessionId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("StartedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("StoppedAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UnassignedAt")
                         .HasColumnType("datetime2");
@@ -1644,14 +2242,130 @@ namespace CCTV.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CameraId");
+
                     b.HasIndex("InstanceId");
 
                     b.HasIndex("SessionId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[SessionId] IS NOT NULL");
 
                     b.HasIndex("ApplicationId", "InstanceId", "AssignmentStatus");
 
                     b.ToTable("PipelineAssignments", (string)null);
+                });
+
+            modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.PipelineHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("NewStatus")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("PipelineAssignmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("PreviousStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PipelineAssignmentId");
+
+                    b.ToTable("PipelineHistories");
+                });
+
+            modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.PipelineModuleAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("AssignedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ParametersJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("PipelineAssignmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ModuleId");
+
+                    b.HasIndex("PipelineAssignmentId");
+
+                    b.ToTable("PipelineModuleAssignments");
                 });
 
             modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.WorkerNode", b =>
@@ -1829,9 +2543,6 @@ namespace CCTV.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<Guid?>("FloorId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<int>("FrameRate")
                         .HasColumnType("int");
 
@@ -1875,6 +2586,9 @@ namespace CCTV.Persistence.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("1080p");
 
+                    b.Property<Guid?>("RoomId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1889,9 +2603,6 @@ namespace CCTV.Persistence.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(10,6)");
 
-                    b.Property<Guid>("SiteId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -1903,14 +2614,12 @@ namespace CCTV.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FloorId");
-
-                    b.HasIndex("SiteId");
+                    b.HasIndex("RoomId");
 
                     b.HasIndex("ApplicationId", "DeviceCode")
                         .IsUnique();
 
-                    b.HasIndex("ApplicationId", "SiteId");
+                    b.HasIndex("ApplicationId", "RoomId");
 
                     b.HasIndex("ApplicationId", "Status");
 
@@ -2095,6 +2804,85 @@ namespace CCTV.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Floors", (string)null);
+                });
+
+            modelBuilder.Entity("CCTV.Domain.Entities.Spatial.Room", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("FloorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FloorId");
+
+                    b.HasIndex("ApplicationId", "FloorId", "Code")
+                        .IsUnique();
+
+                    b.HasIndex("ApplicationId", "FloorId", "SortOrder");
+
+                    b.ToTable("Rooms", (string)null);
                 });
 
             modelBuilder.Entity("CCTV.Domain.Entities.Spatial.Site", b =>
@@ -2490,11 +3278,33 @@ namespace CCTV.Persistence.Migrations
                     b.Navigation("Configuration");
                 });
 
+            modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.EngineCapability", b =>
+                {
+                    b.HasOne("CCTV.Domain.Entities.Orchestration.EngineInstance", "Instance")
+                        .WithMany("Capabilities")
+                        .HasForeignKey("EngineInstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Instance");
+                });
+
             modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.EngineConnection", b =>
                 {
                     b.HasOne("CCTV.Domain.Entities.Orchestration.EngineInstance", "Instance")
                         .WithMany("Connections")
                         .HasForeignKey("InstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Instance");
+                });
+
+            modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.EngineHealthHistory", b =>
+                {
+                    b.HasOne("CCTV.Domain.Entities.Orchestration.EngineInstance", "Instance")
+                        .WithMany()
+                        .HasForeignKey("EngineInstanceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2525,6 +3335,12 @@ namespace CCTV.Persistence.Migrations
 
             modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.PipelineAssignment", b =>
                 {
+                    b.HasOne("CCTV.Domain.Entities.Spatial.Camera", "Camera")
+                        .WithMany()
+                        .HasForeignKey("CameraId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("CCTV.Domain.Entities.Orchestration.EngineInstance", "Instance")
                         .WithMany("Assignments")
                         .HasForeignKey("InstanceId")
@@ -2534,12 +3350,43 @@ namespace CCTV.Persistence.Migrations
                     b.HasOne("CCTV.Domain.Entities.Orchestration.AnalyticsSession", "Session")
                         .WithOne("Assignment")
                         .HasForeignKey("CCTV.Domain.Entities.Orchestration.PipelineAssignment", "SessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Camera");
 
                     b.Navigation("Instance");
 
                     b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.PipelineHistory", b =>
+                {
+                    b.HasOne("CCTV.Domain.Entities.Orchestration.PipelineAssignment", "PipelineAssignment")
+                        .WithMany("History")
+                        .HasForeignKey("PipelineAssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PipelineAssignment");
+                });
+
+            modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.PipelineModuleAssignment", b =>
+                {
+                    b.HasOne("CCTV.Domain.Entities.Analytics.AnalyticsModule", "Module")
+                        .WithMany("PipelineAssignments")
+                        .HasForeignKey("ModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CCTV.Domain.Entities.Orchestration.PipelineAssignment", "PipelineAssignment")
+                        .WithMany("ModuleAssignments")
+                        .HasForeignKey("PipelineAssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Module");
+
+                    b.Navigation("PipelineAssignment");
                 });
 
             modelBuilder.Entity("CCTV.Domain.Entities.Spatial.Building", b =>
@@ -2555,20 +3402,12 @@ namespace CCTV.Persistence.Migrations
 
             modelBuilder.Entity("CCTV.Domain.Entities.Spatial.Camera", b =>
                 {
-                    b.HasOne("CCTV.Domain.Entities.Spatial.Floor", "Floor")
+                    b.HasOne("CCTV.Domain.Entities.Spatial.Room", "Room")
                         .WithMany("Cameras")
-                        .HasForeignKey("FloorId")
+                        .HasForeignKey("RoomId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("CCTV.Domain.Entities.Spatial.Site", "Site")
-                        .WithMany("Cameras")
-                        .HasForeignKey("SiteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Floor");
-
-                    b.Navigation("Site");
+                    b.Navigation("Room");
                 });
 
             modelBuilder.Entity("CCTV.Domain.Entities.Spatial.CameraGroupMember", b =>
@@ -2601,6 +3440,17 @@ namespace CCTV.Persistence.Migrations
                     b.Navigation("Building");
                 });
 
+            modelBuilder.Entity("CCTV.Domain.Entities.Spatial.Room", b =>
+                {
+                    b.HasOne("CCTV.Domain.Entities.Spatial.Floor", "Floor")
+                        .WithMany("Rooms")
+                        .HasForeignKey("FloorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Floor");
+                });
+
             modelBuilder.Entity("CCTV.Domain.Entities.Spatial.Zone", b =>
                 {
                     b.HasOne("CCTV.Domain.Entities.Spatial.Camera", "Camera")
@@ -2615,6 +3465,8 @@ namespace CCTV.Persistence.Migrations
             modelBuilder.Entity("CCTV.Domain.Entities.Analytics.AnalyticsModule", b =>
                 {
                     b.Navigation("Entitlements");
+
+                    b.Navigation("PipelineAssignments");
                 });
 
             modelBuilder.Entity("CCTV.Domain.Entities.Analytics.ModuleEntitlement", b =>
@@ -2667,9 +3519,18 @@ namespace CCTV.Persistence.Migrations
                 {
                     b.Navigation("Assignments");
 
+                    b.Navigation("Capabilities");
+
                     b.Navigation("Connections");
 
                     b.Navigation("Heartbeats");
+                });
+
+            modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.PipelineAssignment", b =>
+                {
+                    b.Navigation("History");
+
+                    b.Navigation("ModuleAssignments");
                 });
 
             modelBuilder.Entity("CCTV.Domain.Entities.Orchestration.WorkerNode", b =>
@@ -2696,14 +3557,17 @@ namespace CCTV.Persistence.Migrations
 
             modelBuilder.Entity("CCTV.Domain.Entities.Spatial.Floor", b =>
                 {
+                    b.Navigation("Rooms");
+                });
+
+            modelBuilder.Entity("CCTV.Domain.Entities.Spatial.Room", b =>
+                {
                     b.Navigation("Cameras");
                 });
 
             modelBuilder.Entity("CCTV.Domain.Entities.Spatial.Site", b =>
                 {
                     b.Navigation("Buildings");
-
-                    b.Navigation("Cameras");
                 });
 #pragma warning restore 612, 618
         }

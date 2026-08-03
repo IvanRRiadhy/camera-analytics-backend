@@ -1,4 +1,5 @@
 using CCTV.Application.Abstractions.Messaging;
+using CCTV.Application.Common.Interfaces;
 using CCTV.Infrastructure.Messaging.BackgroundServices;
 using CCTV.Infrastructure.Messaging.RabbitMQ;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Connection;
@@ -6,6 +7,7 @@ using CCTV.Infrastructure.Messaging.RabbitMQ.Consumer;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Health;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Options;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Publisher;
+using CCTV.Infrastructure.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -25,11 +27,20 @@ public static class DependencyInjection
         services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
         services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
         services.AddSingleton<IMessageBus, RabbitMqMessageBus>();
+        services.AddSingleton<IEngineCommandPublisher, EngineCommandPublisher>();
 
-        // 4. Background Hosted Service Consumer
+        // 4. Register SignalR Services
+        services.AddSignalR();
+        services.AddTransient<IEngineTelemetryPublisher, EngineTelemetryPublisher>();
+
+        // 5. Background Hosted Service Consumers & Health Monitor
         services.AddHostedService<EngineRegistrationConsumerHostedService>();
+        services.AddHostedService<EngineHeartbeatConsumerHostedService>();
+        services.AddHostedService<EngineHealthMonitorHostedService>();
+        services.AddHostedService<RuntimeTickConsumerHostedService>();
+        services.AddHostedService<AnalyticsSnapshotConsumerHostedService>();
 
-        // 5. Health Checks
+        // 6. Health Checks
         services.AddHealthChecks()
                 .AddCheck<RabbitMqHealthCheck>("rabbitmq_health_check");
 

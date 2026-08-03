@@ -8,6 +8,7 @@ public interface IGenericRepository<T> where T : BaseEntity
     Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
     Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
+    IQueryable<T> GetQueryable();
     
     /// <summary>
     /// Standard Offset Pagination (SKIP/TAKE) for low-volume administrative models (Users, Sites, Cameras).

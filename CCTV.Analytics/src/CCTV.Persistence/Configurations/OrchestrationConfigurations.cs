@@ -1,5 +1,6 @@
 using CCTV.Domain.Entities.Orchestration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CCTV.Persistence.Configurations;
@@ -107,6 +108,17 @@ public class PipelineAssignmentConfiguration : TenantEntityConfiguration<Pipelin
         builder.ToTable("PipelineAssignments");
 
         builder.Property(a => a.AssignmentStatus).IsRequired().HasMaxLength(30);
+
+        var stringListComparer = new ValueComparer<List<string>>(
+            (c1, c2) => c1 != null && c2 != null && c1.SequenceEqual(c2),
+            c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+            c => c.ToList());
+
+        builder.Property(p => p.RequiredCapabilities)
+            .Metadata.SetValueComparer(stringListComparer);
+
+        builder.Property(p => p.AnalyticsModules)
+            .Metadata.SetValueComparer(stringListComparer);
 
         builder.HasIndex(a => new { a.ApplicationId, a.InstanceId, a.AssignmentStatus });
     }

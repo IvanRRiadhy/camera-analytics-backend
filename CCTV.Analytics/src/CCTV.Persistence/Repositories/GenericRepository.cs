@@ -32,6 +32,11 @@ public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
         return await DbSet.FirstOrDefaultAsync(predicate, cancellationToken);
     }
 
+    public IQueryable<T> GetQueryable()
+    {
+        return DbSet.AsQueryable();
+    }
+
     public async Task<(IReadOnlyList<T> Items, int TotalCount)> GetPagedAsync(
         int pageIndex,
         int pageSize,

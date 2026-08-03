@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using CCTV.Application.Abstractions.Messaging;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Connection;
+using CCTV.Infrastructure.Messaging.RabbitMQ.Constants;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Options;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
@@ -34,6 +35,15 @@ public class RabbitMqConsumer : IMessageConsumer
         var channel = _persistentConnection.CreateModel();
         channel.BasicQos(prefetchSize: 0, prefetchCount: (ushort)_options.PrefetchCount, global: false);
 
+        if (queueName == RabbitMqTopology.Queues.AnalyticsEvents)
+        {
+            channel.QueueBind(queue: queueName, exchange: RabbitMqTopology.Exchanges.Analytics, routingKey: "analytics.runtime.snapshot");
+            channel.QueueBind(queue: queueName, exchange: RabbitMqTopology.Exchanges.Analytics, routingKey: "analytics.runtime.#");
+            channel.QueueBind(queue: queueName, exchange: RabbitMqTopology.Exchanges.Analytics, routingKey: "analytics.event");
+            channel.QueueBind(queue: queueName, exchange: RabbitMqTopology.Exchanges.Analytics, routingKey: "analytics.event.#");
+            channel.QueueBind(queue: queueName, exchange: RabbitMqTopology.Exchanges.Analytics, routingKey: "analytics.#");
+        }
+
         var consumer = new AsyncEventingBasicConsumer(channel);
 
         consumer.Received += async (model, ea) =>
@@ -55,13 +65,15 @@ public class RabbitMqConsumer : IMessageConsumer
 
                 channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
             }
-            catch (Exception)
+            catch (Exception exc)
             {
                 int retryCount = 0;
                 if (headers.TryGetValue("x-retry-count", out var retryObj) && retryObj != null)
                 {
                     int.TryParse(retryObj.ToString(), out retryCount);
                 }
+
+                Console.WriteLine($"[RabbitMqConsumer ERROR] Deserialization/Handling failed for queue '{queueName}': {exc.Message}");
 
                 if (retryCount < 3)
                 {
