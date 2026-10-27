@@ -259,7 +259,7 @@ public static class DbSeeder
 
         // STAGE 10: Roles & Default Admin User
         var roleRepo = context.Set<Role>();
-        var rolesToSeed = new[] { "Admin", "Operator", "Viewer" };
+        var rolesToSeed = AppRoles.All;
         var seededRoles = new Dictionary<string, Role>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var roleName in rolesToSeed)

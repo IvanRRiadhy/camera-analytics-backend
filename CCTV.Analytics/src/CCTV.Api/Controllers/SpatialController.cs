@@ -1,6 +1,8 @@
 using CCTV.Application.Common.Interfaces;
+using CCTV.Domain.Entities.Identity;
 using CCTV.Domain.Entities.Spatial;
 using CCTV.Shared.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +10,7 @@ namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/spatial")]
+[Authorize(Roles = AppRoles.Any)]
 public class SpatialController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -39,6 +42,7 @@ public class SpatialController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost("sites")]
     public async Task<IActionResult> CreateSite([FromBody] CreateSiteRequest req, CancellationToken cancellationToken)
     {
@@ -58,6 +62,7 @@ public class SpatialController : ControllerBase
         return Ok(new { id = site.Id.ToString(), name = site.Name, code = site.Code, description = req.Description, image = req.Image });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPut("sites/{id}")]
     public async Task<IActionResult> UpdateSite(Guid id, [FromBody] CreateSiteRequest req, CancellationToken cancellationToken)
     {
@@ -72,6 +77,7 @@ public class SpatialController : ControllerBase
         return Ok(new { id = site.Id.ToString(), name = site.Name, code = site.Code, description = req.Description, image = req.Image });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("sites/{id}")]
     public async Task<IActionResult> DeleteSite(Guid id, CancellationToken cancellationToken)
     {
@@ -104,6 +110,7 @@ public class SpatialController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost("buildings")]
     public async Task<IActionResult> CreateBuilding([FromBody] CreateBuildingRequest req, CancellationToken cancellationToken)
     {
@@ -155,6 +162,7 @@ public class SpatialController : ControllerBase
         return Ok(new { id = building.Id.ToString(), name = building.Name, description = req.Description, image = req.Image, siteId = building.SiteId.ToString() });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPut("buildings/{id}")]
     public async Task<IActionResult> UpdateBuilding(Guid id, [FromBody] CreateBuildingRequest req, CancellationToken cancellationToken)
     {
@@ -177,6 +185,7 @@ public class SpatialController : ControllerBase
         return Ok(new { id = building.Id.ToString(), name = building.Name, description = req.Description, image = req.Image, siteId = building.SiteId.ToString() });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("buildings/{id}")]
     public async Task<IActionResult> DeleteBuilding(Guid id, CancellationToken cancellationToken)
     {
@@ -209,6 +218,7 @@ public class SpatialController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost("floors")]
     public async Task<IActionResult> CreateFloor([FromBody] CreateFloorRequest req, CancellationToken cancellationToken)
     {
@@ -280,6 +290,7 @@ public class SpatialController : ControllerBase
         return Ok(new { id = floor.Id.ToString(), name = floor.Name, description = req.Description, image = req.Image, buildingId = floor.BuildingId.ToString() });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPut("floors/{id}")]
     public async Task<IActionResult> UpdateFloor(Guid id, [FromBody] CreateFloorRequest req, CancellationToken cancellationToken)
     {
@@ -294,6 +305,7 @@ public class SpatialController : ControllerBase
         return Ok(new { id = floor.Id.ToString(), name = floor.Name, description = req.Description, image = req.Image, buildingId = floor.BuildingId.ToString() });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("floors/{id}")]
     public async Task<IActionResult> DeleteFloor(Guid id, CancellationToken cancellationToken)
     {
@@ -421,6 +433,7 @@ public class SpatialController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost("rooms")]
     public async Task<IActionResult> CreateRoom([FromBody] CreateRoomRequest req, CancellationToken cancellationToken)
     {
@@ -500,6 +513,7 @@ public class SpatialController : ControllerBase
         });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPut("rooms/{id}")]
     public async Task<IActionResult> UpdateRoom(Guid id, [FromBody] CreateRoomRequest req, CancellationToken cancellationToken)
     {
@@ -527,6 +541,7 @@ public class SpatialController : ControllerBase
         });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("rooms/{id}")]
     public async Task<IActionResult> DeleteRoom(Guid id, CancellationToken cancellationToken)
     {
@@ -560,6 +575,7 @@ public class SpatialController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost("cameras")]
     public async Task<IActionResult> CreateCamera([FromBody] CreateCameraRequest req, CancellationToken cancellationToken)
     {
@@ -594,6 +610,7 @@ public class SpatialController : ControllerBase
         return Ok(new { id = camera.Id.ToString(), name = camera.Name, description = req.Description, rtspUrl = camera.RtspStreamUrl, roomId = camera.RoomId?.ToString() ?? req.RoomId, status = "online" });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPut("cameras/{id}")]
     public async Task<IActionResult> UpdateCamera(Guid id, [FromBody] CreateCameraRequest req, CancellationToken cancellationToken)
     {
@@ -619,6 +636,7 @@ public class SpatialController : ControllerBase
         return Ok(new { id = camera.Id.ToString(), name = camera.Name, description = req.Description, rtspUrl = camera.RtspStreamUrl, roomId = camera.RoomId?.ToString() ?? req.RoomId, status = "online" });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("cameras/{id}")]
     public async Task<IActionResult> DeleteCamera(Guid id, CancellationToken cancellationToken)
     {
@@ -718,6 +736,7 @@ public class SpatialController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost("zones")]
     public async Task<IActionResult> CreateZone([FromBody] CreateZoneRequest req, CancellationToken cancellationToken)
     {
@@ -828,6 +847,7 @@ public class SpatialController : ControllerBase
         });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPut("zones/{id}")]
     public async Task<IActionResult> UpdateZone(Guid id, [FromBody] CreateZoneRequest req, CancellationToken cancellationToken)
     {
@@ -886,6 +906,7 @@ public class SpatialController : ControllerBase
         });
     }
 
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("zones/{id}")]
     public async Task<IActionResult> DeleteZone(Guid id, CancellationToken cancellationToken)
     {

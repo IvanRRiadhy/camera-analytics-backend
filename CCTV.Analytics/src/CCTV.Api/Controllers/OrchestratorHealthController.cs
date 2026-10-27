@@ -1,12 +1,15 @@
 using CCTV.Application.Orchestration.DTOs;
 using CCTV.Application.Orchestration.Interfaces;
+using CCTV.Domain.Entities.Identity;
 using CCTV.Shared.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/orchestrator/health")]
+[Authorize(Roles = AppRoles.Any)]
 public class OrchestratorHealthController : ControllerBase
 {
     private readonly IEngineHealthQueryService _healthQueryService;

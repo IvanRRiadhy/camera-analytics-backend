@@ -1,12 +1,15 @@
 using CCTV.Application.Orchestration.DTOs;
 using CCTV.Application.Orchestration.Interfaces;
+using CCTV.Domain.Entities.Identity;
 using CCTV.Shared.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/orchestrator")]
+[Authorize(Roles = AppRoles.Any)]
 public class OrchestratorPipelinesController : ControllerBase
 {
     private readonly IPipelineRegistryService _pipelineRegistry;
@@ -78,6 +81,7 @@ public class OrchestratorPipelinesController : ControllerBase
     /// POST /api/v1/orchestrator/pipelines/assign
     /// Assign a camera pipeline to an AI Engine Instance in the Registry.
     /// </summary>
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost("pipelines/assign")]
     public async Task<ActionResult<PipelineAssignmentDto>> AssignPipeline(
         [FromBody] AssignPipelineRequestDto request,
@@ -92,6 +96,7 @@ public class OrchestratorPipelinesController : ControllerBase
     /// POST /api/v1/orchestrator/pipelines/move
     /// Move/re-assign a pipeline to a new target AI Engine Instance in the Registry.
     /// </summary>
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost("pipelines/move")]
     public async Task<ActionResult<PipelineAssignmentDto>> MovePipeline(
         [FromBody] MovePipelineRequestDto request,
