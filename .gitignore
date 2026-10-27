@@ -8,5 +8,17 @@ obj/
 *.sln.docstates
 out/
 publish/
-appsettings.Development.json
-appsettings.Production.json
+
+
+# Configuration files with secrets
+**/appsettings.json
+**/appsettings.*.json
+!**/appsettings.example.json
+!**/appsettings.json.example
+
+# Graphify
+graphify-out/
+superpowers/
+
+# Archify
+.archify/

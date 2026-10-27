@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\CCTV.Api\CCTV.Api.csproj" />
     <ProjectReference Include="..\..\src\CCTV.Application\CCTV.Application.csproj" />
     <ProjectReference Include="..\..\src\CCTV.Domain\CCTV.Domain.csproj" />
+    <ProjectReference Include="..\..\src\CCTV.Infrastructure\CCTV.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
