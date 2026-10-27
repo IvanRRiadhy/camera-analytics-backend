@@ -669,7 +669,11 @@ public class SpatialController : ControllerBase
     public async Task<IActionResult> GetZones(CancellationToken cancellationToken)
     {
         var repo = _unitOfWork.Repository<Zone>();
+        var cameraRepo = _unitOfWork.Repository<Camera>();
         var zones = await repo.FindAsync(x => true, cancellationToken);
+        var cameras = await cameraRepo.FindAsync(x => true, cancellationToken);
+        var camDict = cameras.ToDictionary(c => c.Id);
+
         var result = zones.Select(z =>
         {
             object? polygonPoints = null;
@@ -693,11 +697,14 @@ public class SpatialController : ControllerBase
 
             var poly = polygonPoints ?? new[] { new[] { 0.1, 0.2 }, new[] { 0.9, 0.2 }, new[] { 0.9, 0.8 }, new[] { 0.1, 0.8 } };
 
+            camDict.TryGetValue(z.CameraId, out var cam);
+            var actualRoomId = cam?.RoomId?.ToString() ?? string.Empty;
+
             return new
             {
                 id = z.Id.ToString(),
                 name = z.Name,
-                roomId = z.CameraId.ToString(),
+                roomId = actualRoomId,
                 cameraConfigs = new[]
                 {
                     new
@@ -719,12 +726,50 @@ public class SpatialController : ControllerBase
 
         Guid targetCameraId = Guid.Empty;
 
-        if (!string.IsNullOrWhiteSpace(req.RoomId) && Guid.TryParse(req.RoomId, out var parsedId) && parsedId != Guid.Empty)
+        // 1. Try to extract cameraId directly from req.CameraConfigs
+        if (req.CameraConfigs != null && req.CameraConfigs.Length > 0)
+        {
+            try
+            {
+                var rawJson = System.Text.Json.JsonSerializer.Serialize(req.CameraConfigs);
+                using var doc = System.Text.Json.JsonDocument.Parse(rawJson);
+                var root = doc.RootElement;
+                if (root.ValueKind == System.Text.Json.JsonValueKind.Array && root.GetArrayLength() > 0)
+                {
+                    var firstEl = root[0];
+                    if (firstEl.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                        firstEl.TryGetProperty("cameraId", out var camIdProp) &&
+                        Guid.TryParse(camIdProp.GetString(), out var parsedCamId) &&
+                        parsedCamId != Guid.Empty)
+                    {
+                        var camExists = await cameraRepo.GetByIdAsync(parsedCamId, cancellationToken);
+                        if (camExists != null)
+                        {
+                            targetCameraId = camExists.Id;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // 2. Try looking up req.RoomId directly as a Camera ID
+        if (targetCameraId == Guid.Empty && !string.IsNullOrWhiteSpace(req.RoomId) && Guid.TryParse(req.RoomId, out var parsedId) && parsedId != Guid.Empty)
         {
             var camExists = await cameraRepo.GetByIdAsync(parsedId, cancellationToken);
             if (camExists != null)
             {
                 targetCameraId = camExists.Id;
+            }
+            else
+            {
+                // 3. Or check if req.RoomId is a Room ID, and find a camera in that room
+                var roomCams = await cameraRepo.FindAsync(c => c.RoomId == parsedId, cancellationToken);
+                var roomCam = roomCams.FirstOrDefault();
+                if (roomCam != null)
+                {
+                    targetCameraId = roomCam.Id;
+                }
             }
         }
 
@@ -764,13 +809,30 @@ public class SpatialController : ControllerBase
         };
         await repo.AddAsync(zone, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return Ok(new { id = zone.Id.ToString(), name = zone.Name, roomId = targetCameraId.ToString(), cameraConfigs = req.CameraConfigs });
+
+        var targetCam = await cameraRepo.GetByIdAsync(targetCameraId, cancellationToken);
+        var actualRoomId = targetCam?.RoomId?.ToString() ?? (!string.IsNullOrWhiteSpace(req.RoomId) ? req.RoomId : string.Empty);
+
+        return Ok(new { 
+            id = zone.Id.ToString(), 
+            name = zone.Name, 
+            roomId = actualRoomId, 
+            cameraConfigs = new[]
+            {
+                new
+                {
+                    cameraId = targetCameraId.ToString(),
+                    polygon = System.Text.Json.JsonSerializer.Deserialize<object>(jsonPolygon)
+                }
+            }
+        });
     }
 
     [HttpPut("zones/{id}")]
     public async Task<IActionResult> UpdateZone(Guid id, [FromBody] CreateZoneRequest req, CancellationToken cancellationToken)
     {
         var repo = _unitOfWork.Repository<Zone>();
+        var cameraRepo = _unitOfWork.Repository<Camera>();
         var zone = await repo.GetByIdAsync(id, cancellationToken);
         if (zone == null) return NotFound();
 
@@ -778,10 +840,50 @@ public class SpatialController : ControllerBase
         if (req.CameraConfigs != null)
         {
             zone.PolygonCoordinatesJson = ExtractPolygonJson(req.CameraConfigs);
+
+            // If a camera config specifies a new camera ID, update target camera
+            try
+            {
+                var rawJson = System.Text.Json.JsonSerializer.Serialize(req.CameraConfigs);
+                using var doc = System.Text.Json.JsonDocument.Parse(rawJson);
+                var root = doc.RootElement;
+                if (root.ValueKind == System.Text.Json.JsonValueKind.Array && root.GetArrayLength() > 0)
+                {
+                    var firstEl = root[0];
+                    if (firstEl.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                        firstEl.TryGetProperty("cameraId", out var camIdProp) &&
+                        Guid.TryParse(camIdProp.GetString(), out var parsedCamId) &&
+                        parsedCamId != Guid.Empty)
+                    {
+                        var camExists = await cameraRepo.GetByIdAsync(parsedCamId, cancellationToken);
+                        if (camExists != null)
+                        {
+                            zone.CameraId = camExists.Id;
+                        }
+                    }
+                }
+            }
+            catch { }
         }
         repo.Update(zone);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return Ok(new { id = zone.Id.ToString(), name = zone.Name, roomId = req.RoomId, cameraConfigs = req.CameraConfigs });
+
+        var cam = await cameraRepo.GetByIdAsync(zone.CameraId, cancellationToken);
+        var actualRoomId = cam?.RoomId?.ToString() ?? (!string.IsNullOrWhiteSpace(req.RoomId) ? req.RoomId : string.Empty);
+
+        return Ok(new { 
+            id = zone.Id.ToString(), 
+            name = zone.Name, 
+            roomId = actualRoomId, 
+            cameraConfigs = new[]
+            {
+                new
+                {
+                    cameraId = zone.CameraId.ToString(),
+                    polygon = System.Text.Json.JsonSerializer.Deserialize<object>(zone.PolygonCoordinatesJson)
+                }
+            }
+        });
     }
 
     [HttpDelete("zones/{id}")]
