@@ -1,5 +1,6 @@
 using CCTV.Infrastructure.Messaging.RabbitMQ.Constants;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -10,13 +11,17 @@ public class RabbitMqPersistentConnection : IRabbitMqPersistentConnection
 {
     private readonly ConnectionFactory _connectionFactory;
     private readonly RabbitMqOptions _options;
+    private readonly ILogger<RabbitMqPersistentConnection>? _logger;
     private readonly object _lockObject = new();
     private IConnection? _connection;
     private bool _disposed;
 
-    public RabbitMqPersistentConnection(IOptions<RabbitMqOptions> options)
+    public RabbitMqPersistentConnection(
+        IOptions<RabbitMqOptions> options,
+        ILogger<RabbitMqPersistentConnection>? logger = null)
     {
         _options = options.Value;
+        _logger = logger;
         _connectionFactory = new ConnectionFactory
         {
             HostName = _options.HostName,
@@ -38,22 +43,34 @@ public class RabbitMqPersistentConnection : IRabbitMqPersistentConnection
         {
             if (IsConnected) return true;
 
-            try
+            const int maxAttempts = 5;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                _connection = _connectionFactory.CreateConnection();
-                if (IsConnected)
+                try
                 {
-                    _connection.ConnectionShutdown += OnConnectionShutdown;
-                    _connection.CallbackException += OnCallbackException;
-                    _connection.ConnectionBlocked += OnConnectionBlocked;
+                    _connection = _connectionFactory.CreateConnection();
+                    if (IsConnected)
+                    {
+                        _connection.ConnectionShutdown += OnConnectionShutdown;
+                        _connection.CallbackException += OnCallbackException;
+                        _connection.ConnectionBlocked += OnConnectionBlocked;
 
-                    InitializeTopology();
-                    return true;
+                        InitializeTopology();
+                        return true;
+                    }
                 }
-            }
-            catch
-            {
-                return false;
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(
+                        ex,
+                        "RabbitMQ connection attempt {Attempt}/{MaxAttempts} failed (Host={Host}:{Port}, VHost={VHost}).",
+                        attempt, maxAttempts, _options.HostName, _options.Port, _options.VirtualHost);
+
+                    if (attempt < maxAttempts)
+                    {
+                        Thread.Sleep(TimeSpan.FromSeconds(2));
+                    }
+                }
             }
 
             return false;
