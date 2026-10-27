@@ -15,6 +15,16 @@ public class DetectionEvidence : TenantEntity
     public string? FullFrameObjectKey { get; set; }
     public string? VideoSnippetObjectKey { get; set; }
 
+    /// <summary>
+    /// Dual Evidence: URL presigned atau lokasi penyimpanan frame asli tanpa modifikasi.
+    /// </summary>
+    public string? OriginalMediaUrl { get; set; }
+
+    /// <summary>
+    /// Dual Evidence: URL presigned atau lokasi crop ROI yang ditingkatkan (CLAHE, denoise, tanpa halusinasi).
+    /// </summary>
+    public string? EnhancedMediaUrl { get; set; }
+
     public long FileSizeBytes { get; set; }
     public string MimeType { get; set; } = "image/jpeg";
     public string EncryptionAlgorithm { get; set; } = "AES_256";

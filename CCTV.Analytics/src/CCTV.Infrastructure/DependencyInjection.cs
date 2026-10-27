@@ -40,7 +40,12 @@ public static class DependencyInjection
         services.AddHostedService<RuntimeTickConsumerHostedService>();
         services.AddHostedService<AnalyticsSnapshotConsumerHostedService>();
 
-        // 6. Health Checks
+        // 6. Object Storage (S3 / SeaweedFS)
+        services.Configure<CCTV.Infrastructure.Storage.StorageOptions>(
+            configuration.GetSection(CCTV.Infrastructure.Storage.StorageOptions.SectionName));
+        services.AddHttpClient<CCTV.Application.Abstractions.Storage.IObjectStorageService, CCTV.Infrastructure.Storage.S3CompatibleStorageService>();
+
+        // 7. Health Checks
         services.AddHealthChecks()
                 .AddCheck<RabbitMqHealthCheck>("rabbitmq_health_check");
 

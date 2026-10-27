@@ -43,27 +43,26 @@ public class RuntimeTickConsumerHostedService : BackgroundService
     {
         _logger.LogInformation("[+] Starting RuntimeTickConsumerHostedService listening on queue '{QueueName}'...", RabbitMqTopology.Queues.AnalyticsEvents);
 
-        await _messageConsumer.SubscribeAsync<System.Text.Json.JsonElement>(
+        await _messageConsumer.SubscribeAsync<CameraRuntimeSnapshotMessage>(
             queueName: RabbitMqTopology.Queues.AnalyticsEvents,
-            messageHandler: async (jsonElement, headers) =>
+            messageHandler: async (snapshotMsg, headers) =>
             {
                 using var scope = _serviceProvider.CreateScope();
                 var telemetryPublisher = scope.ServiceProvider.GetService<IEngineTelemetryPublisher>();
 
-                if (telemetryPublisher != null && jsonElement.ValueKind != System.Text.Json.JsonValueKind.Undefined)
+                if (telemetryPublisher != null && snapshotMsg != null)
                 {
-                    var rawJson = jsonElement.GetRawText();
-                    var cameraName = jsonElement.TryGetProperty("cameraName", out var cName) ? cName.GetString() : 
-                                     jsonElement.TryGetProperty("cameraId", out var cId) ? cId.GetString() : "camera_01";
-                    var pipelineId = jsonElement.TryGetProperty("pipelineId", out var pId) ? pId.GetString() : 
-                                     jsonElement.TryGetProperty("streamUri", out var sUri) ? sUri.GetString() : "pipeline_default";
+                    var rawJson = JsonSerializer.Serialize(snapshotMsg);
+                    var cameraName = !string.IsNullOrEmpty(snapshotMsg.CameraName) ? snapshotMsg.CameraName :
+                                     !string.IsNullOrEmpty(snapshotMsg.CameraId) ? snapshotMsg.CameraId : "camera_01";
+                    var pipelineId = !string.IsNullOrEmpty(snapshotMsg.StreamUri) ? snapshotMsg.StreamUri : "pipeline_default";
 
                     _logger.LogInformation("[-->] Received V2 RuntimeSnapshot from RabbitMQ for Camera '{CameraName}' | Payload Size: {Size} bytes",
                         cameraName, rawJson.Length);
 
                     // Broadcast raw JSON intact to preserve plugins, summary, byZone, and byCamera
-                    await telemetryPublisher.PublishAnalyticsEventAsync(jsonElement, stoppingToken);
-                    await telemetryPublisher.PublishSnapshotUpdatedAsync(pipelineId ?? "pipeline_default", 1, rawJson, stoppingToken);
+                    await telemetryPublisher.PublishAnalyticsEventAsync(snapshotMsg, stoppingToken);
+                    await telemetryPublisher.PublishSnapshotUpdatedAsync(pipelineId, 1, rawJson, stoppingToken);
 
                     _logger.LogInformation("[<--] Successfully broadcast V2 RuntimeSnapshot over SignalR hub '/hubs/telemetry'.");
                 }
@@ -71,3 +70,4 @@ public class RuntimeTickConsumerHostedService : BackgroundService
             cancellationToken: stoppingToken);
     }
 }
+
