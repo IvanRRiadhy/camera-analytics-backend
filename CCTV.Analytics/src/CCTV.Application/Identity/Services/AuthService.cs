@@ -1,8 +1,11 @@
 using CCTV.Application.Common.Interfaces;
 using CCTV.Application.Identity.DTOs;
 using CCTV.Application.Identity.Interfaces;
+using CCTV.Contracts.Common;
 using CCTV.Domain.Entities.Identity;
+using CCTV.Domain.Exceptions;
 using CCTV.Shared.Interfaces;
+using FluentValidation;
 
 namespace CCTV.Application.Identity.Services;
 
@@ -13,23 +16,28 @@ public class AuthService : IAuthService
     private readonly IJwtTokenGenerator _tokenGenerator;
     private readonly ITenantProvider _tenantProvider;
     private readonly ICurrentUserContext _userContext;
+    private readonly IValidator<LoginRequestDto> _loginValidator;
 
     public AuthService(
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator tokenGenerator,
         ITenantProvider tenantProvider,
-        ICurrentUserContext userContext)
+        ICurrentUserContext userContext,
+        IValidator<LoginRequestDto> loginValidator)
     {
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _tokenGenerator = tokenGenerator;
         _tenantProvider = tenantProvider;
         _userContext = userContext;
+        _loginValidator = loginValidator;
     }
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default)
     {
+        await _loginValidator.ValidateAndThrowAsync(request, cancellationToken);
+
         var userRepo = _unitOfWork.Repository<User>();
         var username = request.Username.Trim().ToLowerInvariant();
 
@@ -39,12 +47,12 @@ public class AuthService : IAuthService
 
         if (user == null || !_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
         {
-            throw new UnauthorizedAccessException("Invalid username or password.");
+            throw new UnauthorizedException(ResponseMessages.Auth.InvalidCredentials);
         }
 
         if (!user.IsActive)
         {
-            throw new UnauthorizedAccessException("User account is inactive.");
+            throw new UnauthorizedException(ResponseMessages.Auth.AccountInactive);
         }
 
         user.LastLoginAt = DateTime.UtcNow;
@@ -98,31 +106,13 @@ public class AuthService : IAuthService
     private async Task<List<string>> GetPermissionsForUserAsync(Guid userId, CancellationToken cancellationToken)
     {
         var userRoleRepo = _unitOfWork.Repository<UserRole>();
-        var roleRepo = _unitOfWork.Repository<Role>();
         var permRepo = _unitOfWork.Repository<RolePermission>();
 
         var userRoles = await userRoleRepo.FindAsync(ur => ur.UserId == userId, cancellationToken);
         var roleIds = userRoles.Select(ur => ur.RoleId).ToList();
         if (roleIds.Count == 0) return new List<string>();
 
-        var roles = await roleRepo.FindAsync(r => roleIds.Contains(r.Id), cancellationToken);
-        if (roles.Any(r => string.Equals(r.RoleName, AppRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
-                           string.Equals(r.RoleName, "SuperAdmin", StringComparison.OrdinalIgnoreCase)))
-        {
-            return new List<string> { AppPermissions.AllAccess };
-        }
-
-        var rolePermissions = await permRepo.FindAsync(rp => roleIds.Contains(rp.RoleId), cancellationToken);
-        var perms = rolePermissions
-            .Select(p => p.PermissionClaim)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (perms.Contains(AppPermissions.AllAccess))
-        {
-            return new List<string> { AppPermissions.AllAccess };
-        }
-
-        return perms;
+        var permissions = await permRepo.FindAsync(p => roleIds.Contains(p.RoleId), cancellationToken);
+        return permissions.Select(p => p.PermissionClaim).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 }

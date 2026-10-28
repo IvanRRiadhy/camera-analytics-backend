@@ -1,6 +1,7 @@
 using CCTV.Application.Identity.DTOs;
 using CCTV.Application.Identity.Interfaces;
-using CCTV.Shared.Exceptions;
+using CCTV.Contracts.Common;
+using CCTV.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,39 +20,24 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("login")]
-    public async Task<ActionResult<LoginResponseDto>> Login(
+    public async Task<ActionResult<ApiResponse<LoginResponseDto>>> Login(
         [FromBody] LoginRequestDto request,
         CancellationToken cancellationToken)
     {
-        if (request == null || string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
-        {
-            return BadRequest(new { Message = "Username and Password are required." });
-        }
-
-        try
-        {
-            var response = await _authService.LoginAsync(request, cancellationToken);
-            return Ok(response);
-        }
-        catch (TenantNotResolvedException ex)
-        {
-            return BadRequest(new { Message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { Message = ex.Message });
-        }
+        var response = await _authService.LoginAsync(request, cancellationToken);
+        return Ok(ApiResponse<LoginResponseDto>.SuccessResponse(response, ResponseMessages.Auth.LoginSuccess));
     }
+
     [Authorize]
     [HttpGet("me")]
-    public async Task<ActionResult<CurrentUserProfileDto>> GetMe(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<CurrentUserProfileDto>>> GetMe(CancellationToken cancellationToken)
     {
         var profile = await _authService.GetCurrentUserAsync(cancellationToken);
         if (profile == null)
         {
-            return NotFound(new { Message = "User profile not found." });
+            throw new NotFoundException(ResponseMessages.Auth.ProfileNotFound);
         }
 
-        return Ok(profile);
+        return Ok(ApiResponse<CurrentUserProfileDto>.SuccessResponse(profile));
     }
 }

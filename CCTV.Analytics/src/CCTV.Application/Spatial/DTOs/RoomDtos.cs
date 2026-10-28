@@ -50,11 +50,3 @@ public record RoomQueryParams(
     int PageNumber = 1,
     int PageSize = 10
 );
-
-public record PagedResult<T>(
-    IReadOnlyList<T> Items,
-    int TotalCount,
-    int PageNumber,
-    int PageSize,
-    int TotalPages
-);

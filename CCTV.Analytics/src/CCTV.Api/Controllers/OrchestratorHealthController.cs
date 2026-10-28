@@ -1,9 +1,10 @@
 using CCTV.Api.Security;
 using CCTV.Application.Orchestration.DTOs;
 using CCTV.Application.Orchestration.Interfaces;
+using CCTV.Contracts.Common;
 using CCTV.Domain.Entities.Identity;
+using CCTV.Domain.Exceptions;
 using CCTV.Shared.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CCTV.Api.Controllers;
@@ -24,42 +25,34 @@ public class OrchestratorHealthController : ControllerBase
         _tenantProvider = tenantProvider;
     }
 
-    /// <summary>
-    /// GET /api/v1/orchestrator/health/engines
-    /// Fleet health overview with score averages and status breakdowns.
-    /// </summary>
     [HttpGet("engines")]
-    public async Task<ActionResult<EngineFleetHealthOverviewDto>> GetFleetHealthOverview(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<EngineFleetHealthOverviewDto>>> GetFleetHealthOverview(CancellationToken cancellationToken)
     {
         var overview = await _healthQueryService.GetFleetHealthOverviewAsync(_tenantProvider.ApplicationId, cancellationToken);
-        return Ok(overview);
+        return Ok(ApiResponse<EngineFleetHealthOverviewDto>.SuccessResponse(overview));
     }
 
-    /// <summary>
-    /// GET /api/v1/orchestrator/health/engines/{id}
-    /// Detailed health metrics and score evaluation for a specific AI Engine instance.
-    /// </summary>
     [HttpGet("engines/{id:guid}")]
-    public async Task<ActionResult<EngineHealthSummaryDto>> GetEngineHealth(
+    public async Task<ActionResult<ApiResponse<EngineHealthSummaryDto>>> GetEngineHealth(
         Guid id,
         CancellationToken cancellationToken)
     {
         var health = await _healthQueryService.GetEngineHealthByIdAsync(_tenantProvider.ApplicationId, id, cancellationToken);
-        if (health == null) return NotFound(new { Message = $"Engine instance '{id}' not found." });
-        return Ok(health);
+        if (health == null)
+        {
+            throw new NotFoundException(ResponseMessages.Pipelines.EngineNotFound);
+        }
+
+        return Ok(ApiResponse<EngineHealthSummaryDto>.SuccessResponse(health));
     }
 
-    /// <summary>
-    /// GET /api/v1/orchestrator/health/history/{id}
-    /// Historical telemetry points and score timeline for target AI Engine instance.
-    /// </summary>
     [HttpGet("history/{id:guid}")]
-    public async Task<ActionResult<IReadOnlyList<EngineHealthHistoryPointDto>>> GetEngineHealthHistory(
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<EngineHealthHistoryPointDto>>>> GetEngineHealthHistory(
         Guid id,
         [FromQuery] int take = 100,
         CancellationToken cancellationToken = default)
     {
         var history = await _healthQueryService.GetEngineHealthHistoryAsync(_tenantProvider.ApplicationId, id, take, cancellationToken);
-        return Ok(history);
+        return Ok(ApiResponse<IReadOnlyList<EngineHealthHistoryPointDto>>.SuccessResponse(history));
     }
 }

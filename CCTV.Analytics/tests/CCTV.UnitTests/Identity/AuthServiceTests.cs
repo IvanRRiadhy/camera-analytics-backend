@@ -3,8 +3,12 @@ using CCTV.Application.Common.Interfaces;
 using CCTV.Application.Identity.DTOs;
 using CCTV.Application.Identity.Interfaces;
 using CCTV.Application.Identity.Services;
+using CCTV.Application.Identity.Validators;
+using CCTV.Contracts.Common;
 using CCTV.Domain.Entities.Identity;
+using CCTV.Domain.Exceptions;
 using CCTV.Shared.Interfaces;
+using FluentValidation;
 using NSubstitute;
 using Xunit;
 
@@ -24,7 +28,13 @@ public class AuthServiceTests
     {
         _unitOfWork.Repository<User>().Returns(_userRepo);
         _tenantProvider.ApplicationId.Returns(Guid.NewGuid());
-        _service = new AuthService(_unitOfWork, _passwordHasher, _tokenGenerator, _tenantProvider, _userContext);
+        _service = new AuthService(
+            _unitOfWork,
+            _passwordHasher,
+            _tokenGenerator,
+            _tenantProvider,
+            _userContext,
+            new LoginRequestValidator());
     }
 
     [Fact]
@@ -55,25 +65,37 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task LoginAsync_WrongPassword_ThrowsUnauthorizedAccessException()
+    public async Task LoginAsync_EmptyCredentials_ThrowsValidationException()
+    {
+        await Assert.ThrowsAsync<ValidationException>(() =>
+            _service.LoginAsync(new LoginRequestDto(Username: "", Password: "")));
+    }
+
+    [Fact]
+    public async Task LoginAsync_WrongPassword_ThrowsUnauthorizedException()
     {
         var user = new User { Username = "admin", Email = "admin@bionics.ai", PasswordHash = "hashed_pass", IsActive = true };
         _userRepo.FirstOrDefaultAsync(Arg.Any<Expression<Func<User, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(user);
         _passwordHasher.VerifyPassword("WrongPass", "hashed_pass").Returns(false);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        var ex = await Assert.ThrowsAsync<UnauthorizedException>(() =>
             _service.LoginAsync(new LoginRequestDto(Username: "admin", Password: "WrongPass")));
+
+        Assert.Equal(ResponseMessages.Auth.InvalidCredentials, ex.Message);
     }
 
     [Fact]
-    public async Task LoginAsync_InactiveUser_ThrowsUnauthorizedAccessException()
+    public async Task LoginAsync_InactiveUser_ThrowsUnauthorizedException()
     {
         var user = new User { Username = "disabled", Email = "disabled@bionics.ai", PasswordHash = "hashed_pass", IsActive = false };
         _userRepo.FirstOrDefaultAsync(Arg.Any<Expression<Func<User, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(user);
+        _passwordHasher.VerifyPassword("Pass123!", "hashed_pass").Returns(true);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+        var ex = await Assert.ThrowsAsync<UnauthorizedException>(() =>
             _service.LoginAsync(new LoginRequestDto(Username: "disabled", Password: "Pass123!")));
+
+        Assert.Equal(ResponseMessages.Auth.AccountInactive, ex.Message);
     }
 }

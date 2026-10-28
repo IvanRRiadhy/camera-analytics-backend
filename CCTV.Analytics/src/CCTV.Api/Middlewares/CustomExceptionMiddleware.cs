@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CCTV.Contracts.Common;
 using CCTV.Domain.Exceptions;
+using CCTV.Shared.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace CCTV.Api.Middlewares;
@@ -56,10 +57,10 @@ public class CustomExceptionMiddleware
                 _logger.LogWarning(ex, "Unauthorized: {Message}", ex.Message);
                 break;
 
-            case UnauthorizedAccessException ex:
+            case UnauthorizedAccessException or TenantNotResolvedException:
                 statusCode = 403;
                 result = ApiResponse.Forbidden(ResponseMessages.Forbidden);
-                _logger.LogWarning(ex, "Forbidden access: {Message}", ex.Message);
+                _logger.LogWarning(exception, "Forbidden access: {Message}", exception.Message);
                 break;
 
             case FluentValidation.ValidationException ex:

@@ -1,6 +1,8 @@
 using CCTV.Api.Controllers;
 using CCTV.Application.Identity.DTOs;
 using CCTV.Application.Identity.Interfaces;
+using CCTV.Contracts.Common;
+using CCTV.Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute;
 using Xunit;
@@ -29,20 +31,18 @@ public class AuthControllerTests
         var result = await _controller.Login(req, CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var body = Assert.IsType<LoginResponseDto>(okResult.Value);
-        Assert.Equal("token123", body.AccessToken);
+        var body = Assert.IsType<ApiResponse<LoginResponseDto>>(okResult.Value);
+        Assert.True(body.Success);
+        Assert.Equal("token123", body.Data!.AccessToken);
     }
 
     [Fact]
-    public async Task Login_Unauthorized_Returns401()
+    public async Task Login_Unauthorized_ThrowsUnauthorizedException()
     {
         var req = new LoginRequestDto(Username: "admin", Password: "WrongPass");
         _authService.LoginAsync(req, Arg.Any<CancellationToken>())
-            .Returns<LoginResponseDto>(_ => throw new UnauthorizedAccessException("Invalid username/email or password."));
+            .Returns<LoginResponseDto>(_ => throw new UnauthorizedException(ResponseMessages.Auth.InvalidCredentials));
 
-        var result = await _controller.Login(req, CancellationToken.None);
-
-        var unauthResult = Assert.IsType<UnauthorizedObjectResult>(result.Result);
-        Assert.NotNull(unauthResult.Value);
+        await Assert.ThrowsAsync<UnauthorizedException>(() => _controller.Login(req, CancellationToken.None));
     }
 }

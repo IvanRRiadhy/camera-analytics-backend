@@ -1,5 +1,6 @@
 using CCTV.Api.Security;
 using CCTV.Application.Identity.DTOs;
+using CCTV.Contracts.Common;
 using CCTV.Domain.Entities.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +12,7 @@ namespace CCTV.Api.Controllers;
 public class PermissionsController : ControllerBase
 {
     [HttpGet]
-    public ActionResult<IReadOnlyList<PermissionCatalogDto>> GetPermissions()
+    public ActionResult<ApiResponse<IReadOnlyList<PermissionCatalogDto>>> GetPermissions()
     {
         var catalog = new List<PermissionCatalogDto>
         {
@@ -22,6 +23,6 @@ public class PermissionsController : ControllerBase
             new("Users", new List<string> { AppPermissions.Users.Read, AppPermissions.Users.Write })
         };
 
-        return Ok(catalog);
+        return Ok(ApiResponse<IReadOnlyList<PermissionCatalogDto>>.SuccessResponse(catalog));
     }
 }

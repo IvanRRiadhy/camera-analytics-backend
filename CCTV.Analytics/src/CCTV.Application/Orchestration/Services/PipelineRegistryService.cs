@@ -1,9 +1,11 @@
 using CCTV.Application.Common.Interfaces;
 using CCTV.Application.Orchestration.DTOs;
 using CCTV.Application.Orchestration.Interfaces;
+using CCTV.Contracts.Common;
 using CCTV.Domain.Entities.Orchestration;
 using CCTV.Domain.Entities.Spatial;
 using CCTV.Domain.Enumerations;
+using CCTV.Domain.Exceptions;
 
 namespace CCTV.Application.Orchestration.Services;
 
@@ -29,16 +31,15 @@ public class PipelineRegistryService : IPipelineRegistryService
         var camera = await cameraRepo.FirstOrDefaultAsync(c => c.Id == request.CameraId && c.ApplicationId == request.ApplicationId, cancellationToken);
         if (camera == null)
         {
-            throw new KeyNotFoundException($"Camera with ID '{request.CameraId}' was not found.");
+            throw new NotFoundException(ResponseMessages.Pipelines.CameraNotFound);
         }
 
         var engine = await engineRepo.FirstOrDefaultAsync(e => e.Id == request.EngineInstanceId && e.ApplicationId == request.ApplicationId, cancellationToken);
         if (engine == null)
         {
-            throw new KeyNotFoundException($"EngineInstance with ID '{request.EngineInstanceId}' was not found.");
+            throw new NotFoundException(ResponseMessages.Pipelines.EngineNotFound);
         }
 
-        // Domain Guard: Enforce 1 Active Assignment per Camera
         var activeExisting = await pipelineRepo.FirstOrDefaultAsync(
             p => p.CameraId == request.CameraId && p.ApplicationId == request.ApplicationId &&
                  (p.Status == PipelineStatus.Assigned || p.Status == PipelineStatus.Starting ||
@@ -47,7 +48,7 @@ public class PipelineRegistryService : IPipelineRegistryService
 
         if (activeExisting != null)
         {
-            throw new InvalidOperationException($"Camera '{request.CameraId}' already has an active pipeline assignment '{activeExisting.PipelineId}' (Status: {activeExisting.Status}).");
+            throw new BusinessException(ResponseMessages.Pipelines.AlreadyActive);
         }
 
         var pipelineIdStr = !string.IsNullOrWhiteSpace(request.PipelineId) ? request.PipelineId : $"pipeline_{camera.Name.ToLowerInvariant().Replace(' ', '_')}";
@@ -89,13 +90,13 @@ public class PipelineRegistryService : IPipelineRegistryService
         var assignment = await pipelineRepo.FirstOrDefaultAsync(p => p.Id == request.AssignmentId && p.ApplicationId == request.ApplicationId, cancellationToken);
         if (assignment == null)
         {
-            throw new KeyNotFoundException($"PipelineAssignment with ID '{request.AssignmentId}' was not found.");
+            throw new NotFoundException(ResponseMessages.Pipelines.NotFound);
         }
 
         var newEngine = await engineRepo.FirstOrDefaultAsync(e => e.Id == request.NewEngineInstanceId && e.ApplicationId == request.ApplicationId, cancellationToken);
         if (newEngine == null)
         {
-            throw new KeyNotFoundException($"Target EngineInstance with ID '{request.NewEngineInstanceId}' was not found.");
+            throw new NotFoundException(ResponseMessages.Pipelines.EngineNotFound);
         }
 
         assignment.Move(request.NewEngineInstanceId, request.Reason);
@@ -120,7 +121,7 @@ public class PipelineRegistryService : IPipelineRegistryService
         var assignment = await pipelineRepo.FirstOrDefaultAsync(p => p.Id == assignmentId && p.ApplicationId == applicationId, cancellationToken);
         if (assignment == null)
         {
-            throw new KeyNotFoundException($"PipelineAssignment with ID '{assignmentId}' was not found.");
+            throw new NotFoundException(ResponseMessages.Pipelines.NotFound);
         }
 
         assignment.MarkStopped();

@@ -4,6 +4,18 @@ namespace CCTV.Contracts.Common;
 
 public class PaginationMetadata
 {
+    public PaginationMetadata() { }
+
+    public PaginationMetadata(int page, int limit, int totalItems)
+    {
+        Page = page;
+        Limit = limit;
+        TotalItems = totalItems;
+        TotalPages = limit > 0 ? (int)Math.Ceiling(totalItems / (double)limit) : 0;
+        HasNextPage = page < TotalPages;
+        HasPreviousPage = page > 1;
+    }
+
     [JsonPropertyName("page")]
     public int Page { get; set; }
 

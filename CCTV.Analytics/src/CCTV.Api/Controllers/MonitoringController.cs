@@ -1,8 +1,11 @@
 using System.Text;
 using CCTV.Api.Security;
 using CCTV.Application.Common.Interfaces;
+using CCTV.Application.Orchestration.DTOs;
 using CCTV.Application.Orchestration.Interfaces;
+using CCTV.Contracts.Common;
 using CCTV.Domain.Entities.Identity;
+using CCTV.Domain.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,39 +28,31 @@ public class MonitoringController : ControllerBase
         _telemetryPublisher = telemetryPublisher;
     }
 
-    /// <summary>
-    /// Gets single source of truth monitoring overview (Sites, Cameras, Pipelines, Analytics Counters).
-    /// </summary>
     [HttpGet("overview")]
-    public async Task<IActionResult> GetOverview(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<MonitoringOverviewDto>>> GetOverview(CancellationToken cancellationToken)
     {
         var overview = await _monitoringService.GetOverviewAsync(cancellationToken);
-        return Ok(overview);
+        return Ok(ApiResponse<MonitoringOverviewDto>.SuccessResponse(overview));
     }
 
-    /// <summary>
-    /// Gets realtime analytics events feed.
-    /// </summary>
     [HttpGet("events")]
-    public async Task<IActionResult> GetAnalyticsEvents([FromQuery] int take = 50, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<ApiResponse<List<MonitoringEventDto>>>> GetAnalyticsEvents(
+        [FromQuery] int take = 50,
+        CancellationToken cancellationToken = default)
     {
         var events = await _monitoringService.GetAnalyticsEventsAsync(take, cancellationToken);
-        return Ok(events);
+        return Ok(ApiResponse<List<MonitoringEventDto>>.SuccessResponse(events));
     }
 
-    /// <summary>
-    /// Gets escalated active incidents feed.
-    /// </summary>
     [HttpGet("incidents")]
-    public async Task<IActionResult> GetIncidents([FromQuery] int take = 20, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<ApiResponse<List<MonitoringIncidentDto>>>> GetIncidents(
+        [FromQuery] int take = 20,
+        CancellationToken cancellationToken = default)
     {
         var incidents = await _monitoringService.GetIncidentsAsync(take, cancellationToken);
-        return Ok(incidents);
+        return Ok(ApiResponse<List<MonitoringIncidentDto>>.SuccessResponse(incidents));
     }
 
-    /// <summary>
-    /// Gets the latest JPEG snapshot for a specific vision pipeline.
-    /// </summary>
     [AllowAnonymous]
     [HttpGet("snapshot/{pipelineId}")]
     public IActionResult GetLatestSnapshot(string pipelineId)
@@ -67,21 +62,21 @@ public class MonitoringController : ControllerBase
             return File(snapshot.imageBytes, "image/jpeg");
         }
 
-        // Generate dynamic SVG/JPEG fallback frame if no live engine frame uploaded yet
         byte[] fallbackBytes = GenerateFallbackJpeg(pipelineId);
         return File(fallbackBytes, "image/jpeg");
     }
 
-    /// <summary>
-    /// Uploads latest JPEG frame + overlay metadata from AI Engine Runtime and notifies SignalR subscribers.
-    /// </summary>
     [AllowAnonymous]
     [HttpPost("snapshot/{pipelineId}")]
-    public async Task<IActionResult> PostSnapshot(string pipelineId, IFormFile imageFile, [FromForm] string? overlayMetadataJson, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<object>>> PostSnapshot(
+        string pipelineId,
+        IFormFile imageFile,
+        [FromForm] string? overlayMetadataJson,
+        CancellationToken cancellationToken)
     {
         if (imageFile == null || imageFile.Length == 0)
         {
-            return BadRequest("Image file is empty.");
+            throw new BusinessException("Image file is empty.");
         }
 
         using var ms = new MemoryStream();
@@ -93,10 +88,10 @@ public class MonitoringController : ControllerBase
 
         _snapshotStore[pipelineId] = (bytes, overlayJson, frameNum);
 
-        // Notify presentation clients via SignalR
         await _telemetryPublisher.PublishSnapshotUpdatedAsync(pipelineId, frameNum, overlayJson, cancellationToken);
 
-        return Ok(new { pipelineId, frameNum, status = "SnapshotUpdated" });
+        var data = new { pipelineId, frameNum, status = "SnapshotUpdated" };
+        return Ok(ApiResponse<object>.SuccessResponse(data, ResponseMessages.Monitoring.SnapshotUpdated));
     }
 
     private static byte[] GenerateFallbackJpeg(string pipelineId)
