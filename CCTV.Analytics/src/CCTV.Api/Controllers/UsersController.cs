@@ -1,6 +1,7 @@
 using CCTV.Api.Security;
 using CCTV.Application.Identity.DTOs;
 using CCTV.Application.Identity.Interfaces;
+using CCTV.Contracts.Common;
 using CCTV.Domain.Entities.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,76 +20,49 @@ public class UsersController : ControllerBase
 
     [HttpGet]
     [RequirePermission(AppPermissions.Users.Read)]
-    public async Task<ActionResult<IReadOnlyList<UserDto>>> GetUsers(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<UserDto>>>> GetUsers(CancellationToken cancellationToken)
     {
         var users = await _userService.GetUsersAsync(cancellationToken);
-        return Ok(users);
+        return Ok(ApiResponse<IReadOnlyList<UserDto>>.SuccessResponse(users));
     }
 
     [HttpGet("{id:guid}")]
     [RequirePermission(AppPermissions.Users.Read)]
-    public async Task<ActionResult<UserDto>> GetUserById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<UserDto>>> GetUserById(Guid id, CancellationToken cancellationToken)
     {
         var user = await _userService.GetUserByIdAsync(id, cancellationToken);
-        if (user == null)
-        {
-            return NotFound(new { Message = $"User with ID '{id}' was not found." });
-        }
-
-        return Ok(user);
+        return Ok(ApiResponse<UserDto>.SuccessResponse(user));
     }
 
     [HttpPost]
     [RequirePermission(AppPermissions.Users.Write)]
-    public async Task<ActionResult<UserDto>> CreateUser(
+    public async Task<ActionResult<ApiResponse<UserDto>>> CreateUser(
         [FromBody] CreateUserRequestDto request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var user = await _userService.CreateUserAsync(request, cancellationToken);
-            return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { Message = ex.Message });
-        }
+        var user = await _userService.CreateUserAsync(request, cancellationToken);
+        return CreatedAtAction(
+            nameof(GetUserById), 
+            new { id = user.Id }, 
+            ApiResponse<UserDto>.SuccessResponse(user, ResponseMessages.Users.Created, StatusCodes.Status201Created));
     }
 
-    /// <summary>
-    /// Update user profile details and role assignments.
-    /// </summary>
     [HttpPut("{id:guid}")]
     [RequirePermission(AppPermissions.Users.Write)]
-    public async Task<ActionResult<UserDto>> UpdateUser(
+    public async Task<ActionResult<ApiResponse<UserDto>>> UpdateUser(
         Guid id,
         [FromBody] UpdateUserRequestDto request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var user = await _userService.UpdateUserAsync(id, request, cancellationToken);
-            return Ok(user);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { Message = ex.Message });
-        }
+        var user = await _userService.UpdateUserAsync(id, request, cancellationToken);
+        return Ok(ApiResponse<UserDto>.SuccessResponse(user, ResponseMessages.Users.Updated));
     }
 
-    /// <summary>
-    /// Soft delete a user from the tenant.
-    /// </summary>
     [HttpDelete("{id:guid}")]
     [RequirePermission(AppPermissions.Users.Write)]
-    public async Task<IActionResult> DeleteUser(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<object>>> DeleteUser(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await _userService.DeleteUserAsync(id, cancellationToken);
-        if (!deleted)
-        {
-            return NotFound(new { Message = $"User with ID '{id}' was not found." });
-        }
-
-        return NoContent();
+        await _userService.DeleteUserAsync(id, cancellationToken);
+        return Ok(ApiResponse.SuccessResponse(ResponseMessages.Users.Deleted));
     }
 }

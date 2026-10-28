@@ -1,8 +1,11 @@
 using CCTV.Application.Common.Interfaces;
 using CCTV.Application.Identity.DTOs;
 using CCTV.Application.Identity.Interfaces;
+using CCTV.Contracts.Common;
 using CCTV.Domain.Entities.Identity;
+using CCTV.Domain.Exceptions;
 using CCTV.Shared.Interfaces;
+using FluentValidation;
 
 namespace CCTV.Application.Identity.Services;
 
@@ -11,15 +14,21 @@ public class UserService : IUserService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITenantProvider _tenantProvider;
+    private readonly IValidator<CreateUserRequestDto> _createValidator;
+    private readonly IValidator<UpdateUserRequestDto> _updateValidator;
 
     public UserService(
         IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
-        ITenantProvider tenantProvider)
+        ITenantProvider tenantProvider,
+        IValidator<CreateUserRequestDto> createValidator,
+        IValidator<UpdateUserRequestDto> updateValidator)
     {
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _tenantProvider = tenantProvider;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
     }
 
     public async Task<IReadOnlyList<UserDto>> GetUsersAsync(CancellationToken cancellationToken = default)
@@ -52,11 +61,14 @@ public class UserService : IUserService
         )).ToList();
     }
 
-    public async Task<UserDto?> GetUserByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<UserDto> GetUserByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var userRepo = _unitOfWork.Repository<User>();
         var user = await userRepo.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
-        if (user == null) return null;
+        if (user == null)
+        {
+            throw new NotFoundException(ResponseMessages.Users.NotFound);
+        }
 
         var roles = await GetRoleNamesForUserAsync(user.Id, cancellationToken);
         return MapToDto(user, roles);
@@ -64,6 +76,8 @@ public class UserService : IUserService
 
     public async Task<UserDto> CreateUserAsync(CreateUserRequestDto request, CancellationToken cancellationToken = default)
     {
+        await _createValidator.ValidateAndThrowAsync(request, cancellationToken);
+
         var userRepo = _unitOfWork.Repository<User>();
         var roleRepo = _unitOfWork.Repository<Role>();
         var userRoleRepo = _unitOfWork.Repository<UserRole>();
@@ -77,7 +91,7 @@ public class UserService : IUserService
 
         if (existingUser != null)
         {
-            throw new InvalidOperationException($"User with username '{request.Username}' or email '{request.Email}' already exists.");
+            throw new BusinessException(ResponseMessages.Users.AlreadyExists);
         }
 
         var hashedPassword = _passwordHasher.HashPassword(request.Password);
@@ -119,12 +133,14 @@ public class UserService : IUserService
 
     public async Task<UserDto> UpdateUserAsync(Guid id, UpdateUserRequestDto request, CancellationToken cancellationToken = default)
     {
+        await _updateValidator.ValidateAndThrowAsync(request, cancellationToken);
+
         var userRepo = _unitOfWork.Repository<User>();
         var user = await userRepo.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
         if (user == null)
         {
-            throw new KeyNotFoundException($"User with ID '{id}' was not found.");
+            throw new NotFoundException(ResponseMessages.Users.NotFound);
         }
 
         user.FullName = request.FullName.Trim();
@@ -168,18 +184,19 @@ public class UserService : IUserService
         return MapToDto(user, assignedRoleNames);
     }
 
-    public async Task<bool> DeleteUserAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task DeleteUserAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var userRepo = _unitOfWork.Repository<User>();
         var user = await userRepo.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
-        if (user == null) return false;
+        if (user == null)
+        {
+            throw new NotFoundException(ResponseMessages.Users.NotFound);
+        }
 
         user.IsDeleted = true;
         user.DeletedAt = DateTime.UtcNow;
         userRepo.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return true;
     }
 
     private async Task<List<string>> GetRoleNamesForUserAsync(Guid userId, CancellationToken cancellationToken)

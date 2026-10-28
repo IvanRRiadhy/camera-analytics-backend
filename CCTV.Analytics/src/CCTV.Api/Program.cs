@@ -1,4 +1,5 @@
 using CCTV.Api.Extensions;
+using CCTV.Api.Middlewares;
 using CCTV.Api.Providers;
 using CCTV.Application;
 using CCTV.Infrastructure;
@@ -42,7 +43,10 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
 
-// 6. Apply Database Migrations & Conditional Seeding on startup
+// 6. Global Exception Handling Middleware (First in pipeline to catch all errors)
+app.UseMiddleware<CustomExceptionMiddleware>();
+
+// 7. Apply Database Migrations & Conditional Seeding on startup
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<CCTVAnalyticsDbContext>();
@@ -59,7 +63,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 7. HTTP Request Pipeline
+// 8. HTTP Request Pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -76,7 +80,7 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }));
 app.MapControllers();
 
-// 8. SignalR Hub
+// 9. SignalR Hub
 app.MapHub<EngineTelemetryHub>("/hubs/telemetry");
 
 app.Run();

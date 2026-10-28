@@ -38,3 +38,12 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequestDto
             .NotEmpty().WithMessage("At least one role must be specified.");
     }
 }
+
+public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequestDto>
+{
+    public UpdateUserRequestValidator()
+    {
+        RuleFor(x => x.FullName)
+            .NotEmpty().WithMessage("FullName is required.");
+    }
+}

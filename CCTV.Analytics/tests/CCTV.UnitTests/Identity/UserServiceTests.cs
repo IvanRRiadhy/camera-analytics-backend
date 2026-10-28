@@ -3,8 +3,11 @@ using CCTV.Application.Common.Interfaces;
 using CCTV.Application.Identity.DTOs;
 using CCTV.Application.Identity.Interfaces;
 using CCTV.Application.Identity.Services;
+using CCTV.Application.Identity.Validators;
 using CCTV.Domain.Entities.Identity;
+using CCTV.Domain.Exceptions;
 using CCTV.Shared.Interfaces;
+using FluentValidation;
 using NSubstitute;
 using Xunit;
 
@@ -18,6 +21,8 @@ public class UserServiceTests
     private readonly IGenericRepository<UserRole> _userRoleRepo = Substitute.For<IGenericRepository<UserRole>>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
     private readonly ITenantProvider _tenantProvider = Substitute.For<ITenantProvider>();
+    private readonly IValidator<CreateUserRequestDto> _createValidator = new CreateUserRequestValidator();
+    private readonly IValidator<UpdateUserRequestDto> _updateValidator = new UpdateUserRequestValidator();
     private readonly UserService _service;
 
     public UserServiceTests()
@@ -26,7 +31,7 @@ public class UserServiceTests
         _unitOfWork.Repository<Role>().Returns(_roleRepo);
         _unitOfWork.Repository<UserRole>().Returns(_userRoleRepo);
         _tenantProvider.ApplicationId.Returns(Guid.NewGuid());
-        _service = new UserService(_unitOfWork, _passwordHasher, _tenantProvider);
+        _service = new UserService(_unitOfWork, _passwordHasher, _tenantProvider, _createValidator, _updateValidator);
     }
 
     [Fact]
@@ -48,16 +53,43 @@ public class UserServiceTests
     }
 
     [Fact]
+    public async Task CreateUserAsync_InvalidRequest_ThrowsValidationException()
+    {
+        // Missing username, invalid email, short password
+        var req = new CreateUserRequestDto("", "invalid-email", "12", "", null, new List<string>());
+
+        await Assert.ThrowsAsync<ValidationException>(() => _service.CreateUserAsync(req, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_DuplicateUsername_ThrowsBusinessException()
+    {
+        var req = new CreateUserRequestDto("existinguser", "unique@bionics.ai", "123456", "Some User", null, new List<string> { "Admin" });
+        _userRepo.FirstOrDefaultAsync(Arg.Any<Expression<Func<User, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(new User { Username = "existinguser", Email = "unique@bionics.ai" });
+
+        await Assert.ThrowsAsync<BusinessException>(() => _service.CreateUserAsync(req, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task DeleteUserAsync_ExistingUser_SoftDeletesUser()
     {
         var user = new User { Username = "deluser", Email = "del@bionics.ai", FullName = "Del User" };
         _userRepo.FirstOrDefaultAsync(Arg.Any<Expression<Func<User, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(user);
 
-        var result = await _service.DeleteUserAsync(user.Id, CancellationToken.None);
+        await _service.DeleteUserAsync(user.Id, CancellationToken.None);
 
-        Assert.True(result);
         Assert.True(user.IsDeleted);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteUserAsync_NotFound_ThrowsNotFoundException()
+    {
+        _userRepo.FirstOrDefaultAsync(Arg.Any<Expression<Func<User, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.DeleteUserAsync(Guid.NewGuid(), CancellationToken.None));
     }
 }
