@@ -1,13 +1,13 @@
+using CCTV.Api.Security;
 using CCTV.Application.Identity.DTOs;
 using CCTV.Application.Identity.Interfaces;
-using Microsoft.AspNetCore.Authorization;
+using CCTV.Domain.Entities.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/users")]
-[Authorize(Roles = "Admin,SuperAdmin")]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -18,12 +18,15 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission(AppPermissions.Users.Read)]
     public async Task<ActionResult<IReadOnlyList<UserDto>>> GetUsers(CancellationToken cancellationToken)
     {
         var users = await _userService.GetUsersAsync(cancellationToken);
         return Ok(users);
     }
+
     [HttpGet("{id:guid}")]
+    [RequirePermission(AppPermissions.Users.Read)]
     public async Task<ActionResult<UserDto>> GetUserById(Guid id, CancellationToken cancellationToken)
     {
         var user = await _userService.GetUserByIdAsync(id, cancellationToken);
@@ -34,7 +37,9 @@ public class UsersController : ControllerBase
 
         return Ok(user);
     }
+
     [HttpPost]
+    [RequirePermission(AppPermissions.Users.Write)]
     public async Task<ActionResult<UserDto>> CreateUser(
         [FromBody] CreateUserRequestDto request,
         CancellationToken cancellationToken)
@@ -54,6 +59,7 @@ public class UsersController : ControllerBase
     /// Update user profile details and role assignments.
     /// </summary>
     [HttpPut("{id:guid}")]
+    [RequirePermission(AppPermissions.Users.Write)]
     public async Task<ActionResult<UserDto>> UpdateUser(
         Guid id,
         [FromBody] UpdateUserRequestDto request,
@@ -74,6 +80,7 @@ public class UsersController : ControllerBase
     /// Soft delete a user from the tenant.
     /// </summary>
     [HttpDelete("{id:guid}")]
+    [RequirePermission(AppPermissions.Users.Write)]
     public async Task<IActionResult> DeleteUser(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await _userService.DeleteUserAsync(id, cancellationToken);

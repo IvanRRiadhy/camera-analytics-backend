@@ -1,3 +1,4 @@
+using CCTV.Api.Security;
 using CCTV.Application.Common.Interfaces;
 using CCTV.Domain.Entities.Identity;
 using CCTV.Domain.Entities.Monitoring;
@@ -11,7 +12,7 @@ namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/runtime")]
-[Authorize(Roles = AppRoles.Any)]
+[RequirePermission(AppPermissions.Monitoring.Read)]
 public class RuntimeObservabilityController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;

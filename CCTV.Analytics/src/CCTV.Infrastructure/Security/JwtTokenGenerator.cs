@@ -28,7 +28,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         }
     }
 
-    public (string Token, int ExpiresInSeconds) GenerateToken(User user, IList<string> roles)
+    public (string Token, int ExpiresInSeconds) GenerateToken(User user, IList<string> roles, IList<string>? permissions = null)
     {
         var claims = new List<Claim>
         {
@@ -44,6 +44,14 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        if (permissions != null)
+        {
+            foreach (var permission in permissions)
+            {
+                claims.Add(new Claim("permission", permission));
+            }
         }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SecretKey));

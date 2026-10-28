@@ -1,4 +1,5 @@
 using System.Text;
+using CCTV.Api.Security;
 using CCTV.Application.Common.Interfaces;
 using CCTV.Application.Orchestration.Interfaces;
 using CCTV.Domain.Entities.Identity;
@@ -9,7 +10,7 @@ namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/monitoring")]
-[Authorize(Roles = AppRoles.Any)]
+[RequirePermission(AppPermissions.Monitoring.Read)]
 public class MonitoringController : ControllerBase
 {
     private static readonly Dictionary<string, (byte[] imageBytes, string overlayMetadataJson, long frameNumber)> _snapshotStore = new();

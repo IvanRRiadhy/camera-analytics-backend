@@ -1,3 +1,4 @@
+using CCTV.Api.Security;
 using CCTV.Application.Orchestration.DTOs;
 using CCTV.Application.Orchestration.Interfaces;
 using CCTV.Domain.Entities.Identity;
@@ -9,7 +10,7 @@ namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/orchestrator")]
-[Authorize(Roles = AppRoles.Any)]
+[RequirePermission(AppPermissions.Orchestrator.Read)]
 public class OrchestratorPipelinesController : ControllerBase
 {
     private readonly IPipelineRegistryService _pipelineRegistry;
@@ -81,8 +82,8 @@ public class OrchestratorPipelinesController : ControllerBase
     /// POST /api/v1/orchestrator/pipelines/assign
     /// Assign a camera pipeline to an AI Engine Instance in the Registry.
     /// </summary>
-    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost("pipelines/assign")]
+    [RequirePermission(AppPermissions.Orchestrator.Write)]
     public async Task<ActionResult<PipelineAssignmentDto>> AssignPipeline(
         [FromBody] AssignPipelineRequestDto request,
         CancellationToken cancellationToken)
@@ -96,8 +97,8 @@ public class OrchestratorPipelinesController : ControllerBase
     /// POST /api/v1/orchestrator/pipelines/move
     /// Move/re-assign a pipeline to a new target AI Engine Instance in the Registry.
     /// </summary>
-    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost("pipelines/move")]
+    [RequirePermission(AppPermissions.Orchestrator.Write)]
     public async Task<ActionResult<PipelineAssignmentDto>> MovePipeline(
         [FromBody] MovePipelineRequestDto request,
         CancellationToken cancellationToken)
@@ -112,6 +113,7 @@ public class OrchestratorPipelinesController : ControllerBase
     /// Mark pipeline as Stopped in the Registry.
     /// </summary>
     [HttpPost("pipelines/{id:guid}/stop")]
+    [RequirePermission(AppPermissions.Orchestrator.Execute)]
     public async Task<ActionResult<PipelineAssignmentDto>> StopPipeline(
         Guid id,
         [FromQuery] string? reason,

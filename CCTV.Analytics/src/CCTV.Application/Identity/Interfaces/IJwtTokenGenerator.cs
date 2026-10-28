@@ -4,5 +4,5 @@ namespace CCTV.Application.Identity.Interfaces;
 
 public interface IJwtTokenGenerator
 {
-    (string Token, int ExpiresInSeconds) GenerateToken(User user, IList<string> roles);
+    (string Token, int ExpiresInSeconds) GenerateToken(User user, IList<string> roles, IList<string>? permissions = null);
 }

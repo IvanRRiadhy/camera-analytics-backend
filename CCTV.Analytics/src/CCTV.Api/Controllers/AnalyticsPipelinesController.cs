@@ -1,3 +1,4 @@
+using CCTV.Api.Security;
 using CCTV.Application.Common.Interfaces;
 using CCTV.Domain.Entities.Analytics;
 using CCTV.Domain.Entities.Identity;
@@ -11,7 +12,7 @@ namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/analytics/pipelines")]
-[Authorize(Roles = AppRoles.Any)]
+[RequirePermission(AppPermissions.Analytics.Read)]
 public class AnalyticsPipelinesController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -115,7 +116,7 @@ public class AnalyticsPipelinesController : ControllerBase
     /// <summary>
     /// Assign/Update active analytics modules for a camera pipeline assignment.
     /// </summary>
-    [Authorize(Roles = AppRoles.Admin)]
+    [RequirePermission(AppPermissions.Analytics.Write)]
     [HttpPut("{id:guid}/modules")]
     public async Task<IActionResult> UpdatePipelineModules(
         Guid id,

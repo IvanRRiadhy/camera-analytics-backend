@@ -1,3 +1,4 @@
+using CCTV.Api.Security;
 using CCTV.Application.Common.Interfaces;
 using CCTV.Domain.Entities.Analytics;
 using CCTV.Domain.Entities.Identity;
@@ -8,7 +9,7 @@ namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/analytics/modules")]
-[Authorize(Roles = AppRoles.Any)]
+[RequirePermission(AppPermissions.Analytics.Read)]
 public class AnalyticsModulesController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -89,7 +90,7 @@ public class AnalyticsModulesController : ControllerBase
     /// <summary>
     /// Create a new analytics module in the catalog.
     /// </summary>
-    [Authorize(Roles = AppRoles.Admin)]
+    [RequirePermission(AppPermissions.Analytics.Write)]
     [HttpPost]
     public async Task<IActionResult> CreateModule([FromBody] CreateAnalyticsModuleDto request, CancellationToken cancellationToken)
     {
@@ -132,7 +133,7 @@ public class AnalyticsModulesController : ControllerBase
     /// <summary>
     /// Update an existing analytics module in the catalog.
     /// </summary>
-    [Authorize(Roles = AppRoles.Admin)]
+    [RequirePermission(AppPermissions.Analytics.Write)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateModule(Guid id, [FromBody] UpdateAnalyticsModuleDto request, CancellationToken cancellationToken)
     {
@@ -186,7 +187,7 @@ public class AnalyticsModulesController : ControllerBase
     /// <summary>
     /// Delete an analytics module from the catalog.
     /// </summary>
-    [Authorize(Roles = AppRoles.Admin)]
+    [RequirePermission(AppPermissions.Analytics.Write)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteModule(Guid id, CancellationToken cancellationToken)
     {

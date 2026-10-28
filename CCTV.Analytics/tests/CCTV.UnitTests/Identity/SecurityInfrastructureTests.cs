@@ -68,4 +68,29 @@ public class SecurityInfrastructureTests
         Assert.Equal("janedoe", token.Claims.First(c => c.Type == "username").Value);
         Assert.Contains(token.Claims, c => (c.Type == "role" || c.Type == ClaimTypes.Role) && c.Value == "Admin");
     }
+
+    [Fact]
+    public void JwtTokenGenerator_IncludesPermissionClaims_WhenProvided()
+    {
+        var user = new User
+        {
+            ApplicationId = Guid.NewGuid(),
+            Username = "operator1",
+            Email = "operator1@test.com",
+            FullName = "Operator One"
+        };
+        var roles = new List<string> { "Operator" };
+        var permissions = new List<string> { "spatial.read", "monitoring.read", "orchestrator.execute" };
+
+        var (tokenString, _) = _tokenGenerator.GenerateToken(user, roles, permissions);
+
+        var handler = new JwtSecurityTokenHandler();
+        var token = handler.ReadJwtToken(tokenString);
+
+        var emittedPermissions = token.Claims.Where(c => c.Type == "permission").Select(c => c.Value).ToList();
+        Assert.Equal(3, emittedPermissions.Count);
+        Assert.Contains("spatial.read", emittedPermissions);
+        Assert.Contains("monitoring.read", emittedPermissions);
+        Assert.Contains("orchestrator.execute", emittedPermissions);
+    }
 }

@@ -1,176 +1,202 @@
-# Dokumentasi Role-Based Access Control (RBAC) & Level Akses
+# Dokumentasi Role-Based Access Control (RBAC) & Fine-Grained Permissions (PBAC)
 
-Dokumen ini menjelaskan spesifikasi arsitektur otorisasi, pembagian peran (*roles*), dan matriks hak akses endpoint API pada backend **CCTV Analytics Platform**.
+Dokumen ini menjelaskan spesifikasi arsitektur otorisasi, hak akses granular (*permissions*), pembagian peran (*roles*), dan matriks hak akses endpoint API pada backend **CCTV Analytics Platform**.
 
 ---
 
 ## 1. Filosofi & Arsitektur Otorisasi
 
-Sistem menerapkan model **2 Role Inti** yang sederhana, bersih, dan bebas dari *over-engineering*:
+Sistem menerapkan model **Permission-Based Access Control (PBAC)** dengan standar **3 Verb (`read`, `write`, `execute`)**:
 
 ```
-                           ┌──────────────────────────┐
-                           │      JWT Access Token    │
-                           │      Claim: "role"       │
-                           └────────────┬─────────────┘
-                                        │
-                    ┌───────────────────┴───────────────────┐
-                    ▼                                       ▼
-        ┌───────────────────────┐               ┌───────────────────────┐
-        │      Role: Admin      │               │     Role: Operator    │
-        │  (All Access & Setup) │               │ (Monitoring & Action) │
-        └───────────────────────┘               └───────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                   JWT Access Token                     │
+│  Claim: "role" (Admin, Operator)                       │
+│  Claim: "permission" (spatial.read, users.write, dll)  │
+└───────────────────────────┬────────────────────────────┘
+                            │
+               ┌────────────┴────────────┐
+               ▼                         ▼
+   ┌───────────────────────┐ ┌───────────────────────┐
+   │      Role: Admin      │ │     Role: Operator    │
+   │    Wildcard: ["*"]    │ │       (6 Perms)       │
+   │   (Pure All Access)   │ │                       │
+   └───────────────────────┘ └───────────────────────┘
 ```
 
-- **Admin (System & Configuration Master):**
-  Role eksklusif dengan hak akses penuh (*all-access*). Bertanggung jawab atas pengelolaan akun pengguna, struktur spatial (gedung, lantai, kamera, zona), katalog model AI, dan perintah remote node worker GPU.
-- **Operator (Monitoring & Field Duty):**
-  Role operasional harian di control room. Memiliki hak pantau (*read-only*) ke seluruh topologi kamera, telemetri live, event analitik, serta hak aksi operasional darurat (seperti menghentikan sementara pipeline AI kamera di lapangan). **Dilarang keras mengubah konfigurasi, menghapus aset, atau mengelola akun pengguna.**
+- **Roles sebagai Kontainer Hak Akses:**
+  User dihubungkan ke Role (`UserRoles`), dan Role memiliki kumpulan hak akses (`RolePermissions`).
+- **Wildcard `*` (Pure All-Access untuk Admin):**
+  Role `Admin` memiliki hak akses universal `*`. Setiap endpoint baru di backend otomatis lolos untuk Admin tanpa perlu re-konfigurasi hak akses database atau login ulang.
+- **Endpoint Terproteksi Permission:**
+  Controller tidak mengecek nama role secara kaku, melainkan mengecek hak akses spesifik via atribut `[RequirePermission(AppPermissions.X)]`. Evaluasi otomatis meloloskan pemegang role `Admin` atau pemegang claim `permission: "*"`.
+- **Stateless & Cepat:**
+  Daftar permission disematkan langsung ke dalam token JWT saat login (`ClaimTypes.Role` & claim `"permission"`), sehingga otorisasi dievaluasi instan di memory oleh ASP.NET Core `IAuthorizationPolicyProvider` tanpa query database berulang.
 
-### Implementasi Kode
-Menggunakan konstanta terpusat di `CCTV.Domain.Entities.Identity.AppRoles`:
+---
+
+## 2. Standar 3-Verb Permission Catalog
+
+Setiap permission menggunakan konvensi `{modul}.{verb}`:
+
+| Verb | Karakter Risiko | Cakupan Aksi |
+| :---: | :---: | :--- |
+| **`read`** | Rendah (Passive) | Query data, streaming RTSP, telemetri live, inspeksi log (semua GET) |
+| **`write`** | Sedang (Config/Data) | Menambah, mengedit, atau menghapus data konfigurasi aset dan pengguna |
+| **`execute`** | Tinggi (Runtime/Mesin) | Perintah kontrol mesin langsung, intervensi hardware GPU, stop pipeline darurat |
+
+### Katalog Lengkap (`AppPermissions`):
+
 ```csharp
-public static class AppRoles
+public static class AppPermissions
 {
-    public const string Admin = "Admin";
-    public const string Operator = "Operator";
+    public static class Spatial
+    {
+        public const string Read = "spatial.read";   // Lihat site, gedung, lantai, kamera, zona
+        public const string Write = "spatial.write"; // Tambah/edit/hapus aset fisik
+    }
 
-    // Kombinasi role operasional (Admin otomatis lolos di mana pun Operator diizinkan)
-    public const string Any = $"{Admin},{Operator}";
+    public static class Analytics
+    {
+        public const string Read = "analytics.read";   // Lihat katalog modul & pipeline aktif
+        public const string Write = "analytics.write"; // Pasang/lepas modul analitik ke kamera
+    }
+
+    public static class Orchestrator
+    {
+        public const string Read = "orchestrator.read";       // Monitoring worker node & pipeline
+        public const string Write = "orchestrator.write";     // Assign/move pipeline, remote node command
+        public const string Execute = "orchestrator.execute"; // Stop pipeline analitik darurat
+    }
+
+    public static class Monitoring
+    {
+        public const string Read = "monitoring.read";   // Live overview, telemetry FPS/GPU, snapshot
+        public const string Write = "monitoring.write"; // Acknowledge insiden alarm / catatan
+    }
+
+    public static class Users
+    {
+        public const string Read = "users.read";   // Lihat daftar user & daftar role/permission
+        public const string Write = "users.write"; // Buat/edit/hapus user & update permission role
+    }
 }
 ```
 
 ---
 
-## 2. Matriks Hak Akses Endpoint API
+## 3. Pemetaan Default Role (`DbSeeder`)
 
-### A. Autentikasi & Akun Pengguna (`/api/v1/auth`, `/api/v1/users`)
+- **Role `Admin` (Wildcard `*` — Pure All Access):**
+  Memiliki permission universal `*` yang otomatis meloloskan seluruh endpoint yang ada saat ini maupun modul yang akan ditambahkan di masa depan.
+  Payload JWT claim: `"permission": "*"` dan output login: `"permissions": ["*"]`.
 
-| Method | Endpoint | Deskripsi | Admin | Operator | Publik |
+- **Role `Operator` (6 Permissions — Monitoring & Emergency Action):**
+  - `spatial.read`
+  - `analytics.read`
+  - `orchestrator.read`
+  - `orchestrator.execute` *(aksi darurat stop pipeline di lapangan)*
+  - `monitoring.read`
+  - `monitoring.write`
+
+### Akun Bawaan Default (`DbSeeder`):
+| Role | Username | Email | Password |
+| :--- | :--- | :--- | :--- |
+| **Admin** | `admin` | `admin@bionics.ai` | `Admin@123456` |
+| **Operator** | `operator` | `operator@bionics.ai` | `Operator@123456` |
+
+---
+
+## 4. Matriks Hak Akses Endpoint API
+
+### A. Autentikasi, Akun Pengguna, & Role Management
+
+| Method | Endpoint | Required Permission / Guard | Admin | Operator | Publik |
 | :---: | :--- | :--- | :---: | :---: | :---: |
-| `POST` | `/api/v1/auth/login` | Login user menggunakan Username & Password | ✅ | ✅ | ✅ |
-| `GET` | `/api/v1/auth/me` | Melihat profil pengguna yang sedang login | ✅ | ✅ | ❌ |
-| `GET` | `/api/v1/users` | Melihat daftar seluruh pengguna tenant | ✅ | ❌ | ❌ |
-| `GET` | `/api/v1/users/{id}` | Melihat detail data pengguna spesifik | ✅ | ❌ | ❌ |
-| `POST` | `/api/v1/users` | Mendaftarkan pengguna baru & *assign role* | ✅ | ❌ | ❌ |
-| `PUT` | `/api/v1/users/{id}` | Memperbarui profil, status aktif, dan role | ✅ | ❌ | ❌ |
-| `DELETE`| `/api/v1/users/{id}` | Menghapus pengguna (*soft-delete*) | ✅ | ❌ | ❌ |
+| `POST` | `/api/v1/auth/login` | `[AllowAnonymous]` | ✅ | ✅ | ✅ |
+| `GET` | `/api/v1/auth/me` | Logged In User | ✅ | ✅ | ❌ |
+| `GET` | `/api/v1/permissions` | `users.read` | ✅ | ❌ | ❌ |
+| `GET` | `/api/v1/roles` | `users.read` | ✅ | ❌ | ❌ |
+| `GET` | `/api/v1/roles/{id}` | `users.read` | ✅ | ❌ | ❌ |
+| `POST` | `/api/v1/roles` | `users.write` | ✅ | ❌ | ❌ |
+| `PUT` | `/api/v1/roles/{id}/permissions` | `users.write` | ✅ | ❌ | ❌ |
+| `DELETE`| `/api/v1/roles/{id}` | `users.write` | ✅ | ❌ | ❌ |
+| `GET` | `/api/v1/users` | `users.read` | ✅ | ❌ | ❌ |
+| `GET` | `/api/v1/users/{id}` | `users.read` | ✅ | ❌ | ❌ |
+| `POST` | `/api/v1/users` | `users.write` | ✅ | ❌ | ❌ |
+| `PUT` | `/api/v1/users/{id}` | `users.write` | ✅ | ❌ | ❌ |
+| `DELETE`| `/api/v1/users/{id}` | `users.write` | ✅ | ❌ | ❌ |
 
 ---
 
 ### B. Spatial & Hirarki Aset Fisik (`/api/v1/spatial`)
 
-Hirarki: `Site` ➔ `Building` ➔ `Floor` ➔ `Room` ➔ `Camera` ➔ `Zone`
-
-| Method | Endpoint | Deskripsi | Admin | Operator |
+| Method | Endpoint | Required Permission | Admin | Operator |
 | :---: | :--- | :--- | :---: | :---: |
-| `GET` | `/api/v1/spatial/sites` | Melihat daftar site / cabang | 👁️ Read | 👁️ Read |
-| `POST/PUT/DELETE` | `/api/v1/spatial/sites/**` | Tambah, ubah, atau hapus site | ✏️ Write | ❌ 403 |
-| `GET` | `/api/v1/spatial/buildings` | Melihat daftar gedung | 👁️ Read | 👁️ Read |
-| `POST/PUT/DELETE` | `/api/v1/spatial/buildings/**` | Tambah, ubah, atau hapus gedung | ✏️ Write | ❌ 403 |
-| `GET` | `/api/v1/spatial/floors` | Melihat daftar lantai per gedung | 👁️ Read | 👁️ Read |
-| `POST/PUT/DELETE` | `/api/v1/spatial/floors/**` | Tambah, ubah, atau hapus lantai | ✏️ Write | ❌ 403 |
-| `GET` | `/api/v1/spatial/rooms` | Melihat daftar ruangan per lantai | 👁️ Read | 👁️ Read |
-| `POST/PUT/DELETE` | `/api/v1/spatial/rooms/**` | Tambah, ubah, atau hapus ruangan | ✏️ Write | ❌ 403 |
-| `GET` | `/api/v1/spatial/cameras` | Melihat daftar kamera & status stream | 👁️ Read | 👁️ Read |
-| `POST/PUT/DELETE` | `/api/v1/spatial/cameras/**` | Registrasi kamera, set URL RTSP, hapus kamera | ✏️ Write | ❌ 403 |
-| `GET` | `/api/v1/spatial/zones` | Melihat koordinat poligon zona deteksi | 👁️ Read | 👁️ Read |
-| `POST/PUT/DELETE` | `/api/v1/spatial/zones/**` | Buat poligon baru, kalibrasi koordinat zona | ✏️ Write | ❌ 403 |
+| `GET` | `/api/v1/spatial/**` | `spatial.read` | ✅ | ✅ |
+| `POST/PUT/DELETE` | `/api/v1/spatial/**` | `spatial.write` | ✅ | ❌ 403 |
 
 ---
 
 ### C. Katalog Modul AI & Pipeline Kamera (`/api/v1/analytics`)
 
-| Method | Endpoint | Deskripsi | Admin | Operator |
+| Method | Endpoint | Required Permission | Admin | Operator |
 | :---: | :--- | :--- | :---: | :---: |
-| `GET` | `/api/v1/analytics/modules` | Melihat katalog modul AI (Face, People Counting, dll) | 👁️ Read | 👁️ Read |
-| `POST/PUT/DELETE` | `/api/v1/analytics/modules/**` | Tambah/ubah/hapus definisi modul analitik | ✏️ Write | ❌ 403 |
-| `GET` | `/api/v1/analytics/pipelines` | Melihat daftar pipeline kamera & modul yang aktif | 👁️ Read | 👁️ Read |
-| `PUT` | `/api/v1/analytics/pipelines/{id}/modules` | Mengubah modul AI yang dipasang pada kamera | ✏️ Write | ❌ 403 |
+| `GET` | `/api/v1/analytics/**` | `analytics.read` | ✅ | ✅ |
+| `POST/PUT/DELETE` | `/api/v1/analytics/**` | `analytics.write` | ✅ | ❌ 403 |
 
 ---
 
-### D. AI Engine Orchestration & Worker Nodes (`/api/v1/orchestrator`, `/api/v1/orchestration`)
+### D. AI Engine Orchestration & Worker Nodes
 
-| Method | Endpoint | Deskripsi | Admin | Operator |
+| Method | Endpoint | Required Permission | Admin | Operator |
 | :---: | :--- | :--- | :---: | :---: |
-| `GET` | `/api/v1/orchestration/nodes` | Melihat daftar node worker GPU & status resource | 👁️ Read | 👁️ Read |
-| `POST` | `/api/v1/orchestration/nodes/{id}/commands` | Remote command node (*restart, calibrate, terminate*) | ✏️ Write | ❌ 403 |
-| `GET` | `/api/v1/orchestrator/pipelines` | Monitoring status seluruh pipeline AI yang berjalan | 👁️ Read | 👁️ Read |
-| `POST` | `/api/v1/orchestrator/pipelines/assign` | Menugaskan kamera ke worker engine AI spesifik | ✏️ Write | ❌ 403 |
-| `POST` | `/api/v1/orchestrator/pipelines/move` | Memindahkan beban pipeline ke engine worker lain | ✏️ Write | ❌ 403 |
-| `POST` | `/api/v1/orchestrator/pipelines/{id}/stop` | **Menghentikan analisa kamera di lapangan** | ✅ Action | ✅ Action |
-| `GET` | `/api/v1/orchestrator/health/**` | Melihat skor kesehatan dan heartbeat engine fleet | 👁️ Read | 👁️ Read |
+| `GET` | `/api/v1/orchestration/**`, `/api/v1/orchestrator/**` | `orchestrator.read` | ✅ | ✅ |
+| `POST` | `/api/v1/orchestration/nodes/{id}/commands` | `orchestrator.write` | ✅ | ❌ 403 |
+| `POST` | `/api/v1/orchestrator/pipelines/assign` | `orchestrator.write` | ✅ | ❌ 403 |
+| `POST` | `/api/v1/orchestrator/pipelines/move` | `orchestrator.write` | ✅ | ❌ 403 |
+| `POST` | `/api/v1/orchestrator/pipelines/{id}/stop` | `orchestrator.execute` | ✅ | ✅ |
 
 ---
 
-### E. Monitoring, Live Telemetri, & Insiden (`/api/v1/monitoring`, `/api/v1/runtime`)
+### E. Monitoring & Live Telemetri
 
-| Method | Endpoint | Deskripsi | Admin | Operator | Publik / Engine |
+| Method | Endpoint | Required Permission / Guard | Admin | Operator | Publik / Engine |
 | :---: | :--- | :--- | :---: | :---: | :---: |
-| `GET` | `/api/v1/monitoring/overview` | Ringkasan metrik kamera, site, dan counter analitik | 👁️ Read | 👁️ Read | ❌ |
-| `GET` | `/api/v1/monitoring/events` | Feed realtime event deteksi analitik | 👁️ Read | 👁️ Read | ❌ |
-| `GET` | `/api/v1/monitoring/incidents` | Feed antrian insiden aktif / alarm keamanan | 👁️ Read | 👁️ Read | ❌ |
-| `GET` | `/api/v1/monitoring/snapshot/{id}` | Mengambil frame JPEG snapshot live (untuk `<img>` tag) | 👁️ Read | 👁️ Read | ✅ Bebas |
-| `POST` | `/api/v1/monitoring/snapshot/{id}` | Upload frame snapshot JPEG dari AI Engine Python | ❌ | ❌ | ✅ Engine |
-| `GET` | `/api/v1/runtime/dashboard` | Dashboard agregasi performa engine & plugin | 👁️ Read | 👁️ Read | ❌ |
-| `GET` | `/api/v1/runtime/logs/**` | Log runtime engine AI kamera | 👁️ Read | 👁️ Read | ❌ |
+| `GET` | `/api/v1/monitoring/overview` | `monitoring.read` | ✅ | ✅ | ❌ |
+| `GET` | `/api/v1/monitoring/events` | `monitoring.read` | ✅ | ✅ | ❌ |
+| `GET` | `/api/v1/monitoring/incidents` | `monitoring.read` | ✅ | ✅ | ❌ |
+| `GET` | `/api/v1/runtime/**` | `monitoring.read` | ✅ | ✅ | ❌ |
+| `GET` | `/api/v1/monitoring/snapshot/{id}` | `[AllowAnonymous]` | ✅ | ✅ | ✅ Bebas |
+| `POST` | `/api/v1/monitoring/snapshot/{id}` | `[AllowAnonymous]` | ❌ | ❌ | ✅ Engine |
+| `GET` | `/api/v1/engine/runtime/bootstrap` | `[AllowAnonymous]` | ❌ | ❌ | ✅ Internal Engine |
 
 ---
 
-### F. Internal Worker Service (`/api/v1/engine/runtime`)
+## 5. Struktur Token JWT
 
-| Method | Endpoint | Deskripsi | Sifat Akses |
-| :---: | :--- | :--- | :--- |
-| `GET` | `/api/v1/engine/runtime/bootstrap` | Digunakan oleh Python AI Engine worker saat inisialisasi boot untuk mengambil daftar kamera & RTSP | `[AllowAnonymous]` *(Internal Service Network)* |
+Contoh payload JWT yang dihasilkan saat login:
 
----
-
-## 3. Struktur Token JWT & Evaluasi Otorisasi
-
-Setiap request yang membutuhkan otorisasi wajib menyertakan header:
-```http
-Authorization: Bearer <access_token>
-```
-
-### Contoh Payload JWT Token
 ```json
 {
   "sub": "6481af57-c1ed-43e9-a391-13e916e6ac1c",
-  "username": "admin",
-  "email": "admin@bionics.ai",
-  "fullname": "System Administrator",
-  "name": "System Administrator",
+  "username": "operator1",
+  "email": "operator@bionics.ai",
+  "fullname": "Control Room Operator",
   "app_id": "e078ee93-90c4-4b95-9651-7bf82c8a6d33",
   "tenant_id": "e078ee93-90c4-4b95-9651-7bf82c8a6d33",
-  "role": "Admin",
+  "role": "Operator",
+  "permission": [
+    "spatial.read",
+    "analytics.read",
+    "orchestrator.read",
+    "orchestrator.execute",
+    "monitoring.read",
+    "monitoring.write"
+  ],
   "nbf": 1793092896,
   "exp": 1793179296,
-  "iat": 1793092896,
   "iss": "CCTV.Analytics",
   "aud": "CCTV.Clients"
 }
 ```
-
-### Cara Kerja Evaluasi di ASP.NET Core:
-1. Middleware `UseAuthentication()` membaca token dan menyusun `ClaimsPrincipal`.
-2. Middleware `UseAuthorization()` mencocokkan `ClaimTypes.Role` dengan nilai atribut di controller:
-   - Jika controller memiliki `[Authorize(Roles = AppRoles.Admin)]`, hanya user dengan claim `role: "Admin"` yang diizinkan (Operator mendapat HTTP 403 Forbidden).
-   - Jika controller memiliki `[Authorize(Roles = AppRoles.Any)]`, user dengan `role: "Admin"` maupun `role: "Operator"` diizinkan.
-   - Jika user belum login / token tidak valid, sistem mengembalikan HTTP 401 Unauthorized.
-
----
-
-## 4. Rencana Skalabilitas (Future Role: Viewer)
-
-Jika di masa depan dibutuhkan role **Viewer** (misalnya untuk auditor, manajemen eksekutif, atau tamu yang hanya boleh melihat statistik tanpa tombol kontrol apa pun):
-
-1. Daftarkan nama role baru di `AppRoles`:
-   ```csharp
-   public const string Viewer = "Viewer";
-   ```
-2. Endpoint monitoring cukup diperluas string konstanta-nya:
-   ```csharp
-   public const string ReadOnlyRoles = $"{Admin},{Operator},{Viewer}";
-   ```
-3. Endpoint aksi lapangan seperti `stop pipeline` tetap aman terkunci hanya untuk `Admin,Operator` tanpa mengubah struktur arsitektur yang sudah ada.

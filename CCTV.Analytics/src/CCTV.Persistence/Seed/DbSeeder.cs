@@ -279,6 +279,31 @@ public static class DbSeeder
         }
         await context.SaveChangesAsync();
 
+        var permRepo = context.Set<RolePermission>();
+        foreach (var (roleName, role) in seededRoles)
+        {
+            var targetPermissions = string.Equals(roleName, AppRoles.Admin, StringComparison.OrdinalIgnoreCase)
+                ? new[] { AppPermissions.AllAccess }
+                : AppPermissions.OperatorDefaults;
+
+            var existingPermClaims = await permRepo.IgnoreQueryFilters()
+                .Where(rp => rp.RoleId == role.Id && rp.ApplicationId == tenantId)
+                .Select(rp => rp.PermissionClaim)
+                .ToListAsync();
+
+            var missingPerms = targetPermissions.Except(existingPermClaims, StringComparer.OrdinalIgnoreCase).ToList();
+            foreach (var perm in missingPerms)
+            {
+                await permRepo.AddAsync(new RolePermission
+                {
+                    ApplicationId = tenantId,
+                    RoleId = role.Id,
+                    PermissionClaim = perm
+                });
+            }
+        }
+        await context.SaveChangesAsync();
+
         var userRepo = context.Set<User>();
         const string adminEmail = "admin@bionics.ai";
         var existingAdmin = await userRepo.IgnoreQueryFilters()
@@ -306,6 +331,37 @@ public static class DbSeeder
                     ApplicationId = tenantId,
                     UserId = adminUser.Id,
                     RoleId = adminRole.Id
+                });
+                await context.SaveChangesAsync();
+            }
+        }
+
+        const string operatorEmail = "operator@bionics.ai";
+        var existingOperator = await userRepo.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Email == operatorEmail && u.ApplicationId == tenantId);
+
+        if (existingOperator == null)
+        {
+            var operatorUser = new User
+            {
+                ApplicationId = tenantId,
+                Username = "operator",
+                Email = operatorEmail,
+                FullName = "Control Room Operator",
+                PasswordHash = BCrypt.Net.BCrypt.EnhancedHashPassword("Operator@123456"),
+                IsActive = true
+            };
+            await userRepo.AddAsync(operatorUser);
+            await context.SaveChangesAsync();
+
+            if (seededRoles.TryGetValue(AppRoles.Operator, out var operatorRole))
+            {
+                var userRoleRepo = context.Set<UserRole>();
+                await userRoleRepo.AddAsync(new UserRole
+                {
+                    ApplicationId = tenantId,
+                    UserId = operatorUser.Id,
+                    RoleId = operatorRole.Id
                 });
                 await context.SaveChangesAsync();
             }

@@ -43,7 +43,7 @@ public class AuthServiceTests
         _userRepo.FirstOrDefaultAsync(Arg.Any<Expression<Func<User, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(user);
         _passwordHasher.VerifyPassword("Pass123!", "hashed_pass").Returns(true);
-        _tokenGenerator.GenerateToken(user, Arg.Any<IList<string>>()).Returns(("mock_jwt_token", 86400));
+        _tokenGenerator.GenerateToken(user, Arg.Any<IList<string>>(), Arg.Any<IList<string>?>()).Returns(("mock_jwt_token", 86400));
 
         var response = await _service.LoginAsync(new LoginRequestDto(Username: "admin", Password: "Pass123!"));
 

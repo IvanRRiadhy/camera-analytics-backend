@@ -52,7 +52,8 @@ public class AuthService : IAuthService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var roles = await GetRoleNamesForUserAsync(user.Id, cancellationToken);
-        var (token, expiresIn) = _tokenGenerator.GenerateToken(user, roles);
+        var permissions = await GetPermissionsForUserAsync(user.Id, cancellationToken);
+        var (token, expiresIn) = _tokenGenerator.GenerateToken(user, roles, permissions);
 
         var userDto = new UserDto(
             user.Id,
@@ -62,7 +63,8 @@ public class AuthService : IAuthService
             user.PhoneNumber,
             user.IsActive,
             user.LastLoginAt,
-            roles);
+            roles,
+            permissions);
 
         return new LoginResponseDto(token, "Bearer", expiresIn, userDto);
     }
@@ -76,7 +78,8 @@ public class AuthService : IAuthService
         if (user == null) return null;
 
         var roles = await GetRoleNamesForUserAsync(user.Id, cancellationToken);
-        return new CurrentUserProfileDto(user.Id, user.Username, user.Email, user.FullName, roles);
+        var permissions = await GetPermissionsForUserAsync(user.Id, cancellationToken);
+        return new CurrentUserProfileDto(user.Id, user.Username, user.Email, user.FullName, roles, permissions);
     }
 
     private async Task<List<string>> GetRoleNamesForUserAsync(Guid userId, CancellationToken cancellationToken)
@@ -90,5 +93,36 @@ public class AuthService : IAuthService
 
         var roles = await roleRepo.FindAsync(r => roleIds.Contains(r.Id), cancellationToken);
         return roles.Select(r => r.RoleName).ToList();
+    }
+
+    private async Task<List<string>> GetPermissionsForUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var userRoleRepo = _unitOfWork.Repository<UserRole>();
+        var roleRepo = _unitOfWork.Repository<Role>();
+        var permRepo = _unitOfWork.Repository<RolePermission>();
+
+        var userRoles = await userRoleRepo.FindAsync(ur => ur.UserId == userId, cancellationToken);
+        var roleIds = userRoles.Select(ur => ur.RoleId).ToList();
+        if (roleIds.Count == 0) return new List<string>();
+
+        var roles = await roleRepo.FindAsync(r => roleIds.Contains(r.Id), cancellationToken);
+        if (roles.Any(r => string.Equals(r.RoleName, AppRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+                           string.Equals(r.RoleName, "SuperAdmin", StringComparison.OrdinalIgnoreCase)))
+        {
+            return new List<string> { AppPermissions.AllAccess };
+        }
+
+        var rolePermissions = await permRepo.FindAsync(rp => roleIds.Contains(rp.RoleId), cancellationToken);
+        var perms = rolePermissions
+            .Select(p => p.PermissionClaim)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (perms.Contains(AppPermissions.AllAccess))
+        {
+            return new List<string> { AppPermissions.AllAccess };
+        }
+
+        return perms;
     }
 }

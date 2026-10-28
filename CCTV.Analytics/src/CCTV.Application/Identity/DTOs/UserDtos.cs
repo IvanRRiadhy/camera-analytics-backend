@@ -8,7 +8,8 @@ public record UserDto(
     string? PhoneNumber,
     bool IsActive,
     DateTime? LastLoginAt,
-    List<string> Roles);
+    List<string> Roles,
+    List<string>? Permissions = null);
 
 public record CreateUserRequestDto(
     string Username,

@@ -1,6 +1,8 @@
 using System.Text;
+using CCTV.Api.Security;
 using CCTV.Infrastructure.Security.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -49,6 +51,7 @@ public static class AuthenticationExtensions
         });
 
         services.AddAuthorization();
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
         return services;
     }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CCTV.Api.Security;
 using CCTV.Application.Common.Interfaces;
 using CCTV.Contracts.Engine;
 using CCTV.Domain.Entities.Identity;
@@ -12,7 +13,7 @@ namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/orchestration")]
-[Authorize(Roles = AppRoles.Any)]
+[RequirePermission(AppPermissions.Orchestrator.Read)]
 public class OrchestrationController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -70,7 +71,7 @@ public class OrchestrationController : ControllerBase
     /// POST /api/v1/orchestration/nodes/{instanceId}/commands
     /// Dispatch remote control command to targeted AI Engine instance.
     /// </summary>
-    [Authorize(Roles = AppRoles.Admin)]
+    [RequirePermission(AppPermissions.Orchestrator.Write)]
     [HttpPost("nodes/{instanceId}/commands")]
     public async Task<ActionResult<DispatchCommandResponseDto>> DispatchNodeCommand(
         string instanceId,
