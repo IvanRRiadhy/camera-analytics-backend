@@ -1,5 +1,7 @@
 using CCTV.Application.Engine.Interfaces;
 using CCTV.Application.Engine.Services;
+using CCTV.Application.Identity.Interfaces;
+using CCTV.Application.Identity.Services;
 using CCTV.Application.Orchestration.Interfaces;
 using CCTV.Application.Orchestration.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +18,8 @@ public static class DependencyInjection
         services.AddSingleton<IEngineHealthEvaluationService, EngineHealthEvaluationService>();
         services.AddScoped<IEngineHealthQueryService, EngineHealthQueryService>();
         services.AddScoped<IMonitoringService, MonitoringService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserService, UserService>();
 
         return services;
     }

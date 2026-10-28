@@ -457,9 +457,17 @@ namespace CCTV.Persistence.Migrations
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ApplicationId", "Email")
+                        .IsUnique();
+
+                    b.HasIndex("ApplicationId", "Username")
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
@@ -731,6 +739,9 @@ namespace CCTV.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("EnhancedMediaUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid>("EventId")
                         .HasColumnType("uniqueidentifier");
 
@@ -759,6 +770,9 @@ namespace CCTV.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("OriginalMediaUrl")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("RetentionExpiryDate")
                         .HasColumnType("datetime2");

@@ -10,6 +10,16 @@ public class Role : TenantEntity
     public ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
 }
 
+public static class AppRoles
+{
+    public const string Admin = "Admin";
+    public const string Operator = "Operator";
+
+    public const string Any = $"{Admin},{Operator}";
+
+    public static readonly IReadOnlyList<string> All = new[] { Admin, Operator };
+}
+
 public class UserRole : TenantEntity
 {
     public Guid UserId { get; set; }

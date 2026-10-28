@@ -1,7 +1,9 @@
 using CCTV.Application.Common.Interfaces;
+using CCTV.Domain.Entities.Identity;
 using CCTV.Domain.Entities.Monitoring;
 using CCTV.Domain.Entities.Orchestration;
 using CCTV.Shared.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +11,7 @@ namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/runtime")]
+[Authorize(Roles = AppRoles.Any)]
 public class RuntimeObservabilityController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;

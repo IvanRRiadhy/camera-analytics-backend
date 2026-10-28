@@ -1,5 +1,6 @@
 using CCTV.Application.Abstractions.Messaging;
 using CCTV.Application.Common.Interfaces;
+using CCTV.Application.Identity.Interfaces;
 using CCTV.Infrastructure.Messaging.BackgroundServices;
 using CCTV.Infrastructure.Messaging.RabbitMQ;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Connection;
@@ -7,6 +8,8 @@ using CCTV.Infrastructure.Messaging.RabbitMQ.Consumer;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Health;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Options;
 using CCTV.Infrastructure.Messaging.RabbitMQ.Publisher;
+using CCTV.Infrastructure.Security;
+using CCTV.Infrastructure.Security.Options;
 using CCTV.Infrastructure.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +51,11 @@ public static class DependencyInjection
         // 7. Health Checks
         services.AddHealthChecks()
                 .AddCheck<RabbitMqHealthCheck>("rabbitmq_health_check");
+
+        // 8. Security Services
+        services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
         return services;
     }

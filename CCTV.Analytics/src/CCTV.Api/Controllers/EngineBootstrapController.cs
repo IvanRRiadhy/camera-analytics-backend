@@ -1,5 +1,6 @@
 using CCTV.Application.Common.Interfaces;
 using CCTV.Domain.Entities.Orchestration;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,7 @@ public class EngineBootstrapController : ControllerBase
     /// Returns assigned cameras, stream URIs, full Spatial Hierarchy (Site -> Building -> Floor -> Room -> Camera -> Zone),
     /// pipelines, active analytics modules, and engine metadata.
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("bootstrap")]
     public async Task<IActionResult> GetRuntimeBootstrap([FromQuery] string? engineInstanceId, CancellationToken cancellationToken)
     {

@@ -1,11 +1,14 @@
 using CCTV.Application.Common.Interfaces;
 using CCTV.Domain.Entities.Analytics;
+using CCTV.Domain.Entities.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/analytics/modules")]
+[Authorize(Roles = AppRoles.Any)]
 public class AnalyticsModulesController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -86,6 +89,7 @@ public class AnalyticsModulesController : ControllerBase
     /// <summary>
     /// Create a new analytics module in the catalog.
     /// </summary>
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPost]
     public async Task<IActionResult> CreateModule([FromBody] CreateAnalyticsModuleDto request, CancellationToken cancellationToken)
     {
@@ -128,6 +132,7 @@ public class AnalyticsModulesController : ControllerBase
     /// <summary>
     /// Update an existing analytics module in the catalog.
     /// </summary>
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateModule(Guid id, [FromBody] UpdateAnalyticsModuleDto request, CancellationToken cancellationToken)
     {
@@ -181,6 +186,7 @@ public class AnalyticsModulesController : ControllerBase
     /// <summary>
     /// Delete an analytics module from the catalog.
     /// </summary>
+    [Authorize(Roles = AppRoles.Admin)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteModule(Guid id, CancellationToken cancellationToken)
     {

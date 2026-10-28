@@ -1,4 +1,5 @@
 using CCTV.Domain.Entities.Analytics;
+using CCTV.Domain.Entities.Identity;
 using CCTV.Domain.Entities.Orchestration;
 using CCTV.Domain.Entities.Spatial;
 using CCTV.Domain.Enumerations;
@@ -254,6 +255,60 @@ public static class DbSeeder
                 }
             }
             await context.SaveChangesAsync();
+        }
+
+        // STAGE 10: Roles & Default Admin User
+        var roleRepo = context.Set<Role>();
+        var rolesToSeed = AppRoles.All;
+        var seededRoles = new Dictionary<string, Role>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var roleName in rolesToSeed)
+        {
+            var role = await roleRepo.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(r => r.RoleName == roleName && r.ApplicationId == tenantId);
+            if (role == null)
+            {
+                role = new Role
+                {
+                    ApplicationId = tenantId,
+                    RoleName = roleName
+                };
+                await roleRepo.AddAsync(role);
+            }
+            seededRoles[roleName] = role;
+        }
+        await context.SaveChangesAsync();
+
+        var userRepo = context.Set<User>();
+        const string adminEmail = "admin@bionics.ai";
+        var existingAdmin = await userRepo.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Email == adminEmail && u.ApplicationId == tenantId);
+
+        if (existingAdmin == null)
+        {
+            var adminUser = new User
+            {
+                ApplicationId = tenantId,
+                Username = "admin",
+                Email = adminEmail,
+                FullName = "System Administrator",
+                PasswordHash = BCrypt.Net.BCrypt.EnhancedHashPassword("Admin@123456"),
+                IsActive = true
+            };
+            await userRepo.AddAsync(adminUser);
+            await context.SaveChangesAsync();
+
+            if (seededRoles.TryGetValue("Admin", out var adminRole))
+            {
+                var userRoleRepo = context.Set<UserRole>();
+                await userRoleRepo.AddAsync(new UserRole
+                {
+                    ApplicationId = tenantId,
+                    UserId = adminUser.Id,
+                    RoleId = adminRole.Id
+                });
+                await context.SaveChangesAsync();
+            }
         }
     }
 }

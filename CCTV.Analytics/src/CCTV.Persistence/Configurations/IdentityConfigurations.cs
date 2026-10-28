@@ -12,11 +12,13 @@ public class UserConfiguration : TenantEntityConfiguration<User>
 
         builder.ToTable("Users");
 
+        builder.Property(u => u.Username).IsRequired().HasMaxLength(100);
         builder.Property(u => u.Email).IsRequired().HasMaxLength(256);
         builder.Property(u => u.PasswordHash).IsRequired().HasMaxLength(500);
         builder.Property(u => u.FullName).IsRequired().HasMaxLength(150);
         builder.Property(u => u.PhoneNumber).HasMaxLength(30);
 
+        builder.HasIndex(u => new { u.ApplicationId, u.Username }).IsUnique();
         builder.HasIndex(u => new { u.ApplicationId, u.Email }).IsUnique();
 
         builder.HasMany(u => u.UserRoles)

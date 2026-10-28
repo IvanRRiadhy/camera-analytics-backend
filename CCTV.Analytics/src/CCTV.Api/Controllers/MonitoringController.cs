@@ -1,12 +1,15 @@
 using System.Text;
 using CCTV.Application.Common.Interfaces;
 using CCTV.Application.Orchestration.Interfaces;
+using CCTV.Domain.Entities.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CCTV.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/monitoring")]
+[Authorize(Roles = AppRoles.Any)]
 public class MonitoringController : ControllerBase
 {
     private static readonly Dictionary<string, (byte[] imageBytes, string overlayMetadataJson, long frameNumber)> _snapshotStore = new();
@@ -54,6 +57,7 @@ public class MonitoringController : ControllerBase
     /// <summary>
     /// Gets the latest JPEG snapshot for a specific vision pipeline.
     /// </summary>
+    [AllowAnonymous]
     [HttpGet("snapshot/{pipelineId}")]
     public IActionResult GetLatestSnapshot(string pipelineId)
     {
@@ -70,6 +74,7 @@ public class MonitoringController : ControllerBase
     /// <summary>
     /// Uploads latest JPEG frame + overlay metadata from AI Engine Runtime and notifies SignalR subscribers.
     /// </summary>
+    [AllowAnonymous]
     [HttpPost("snapshot/{pipelineId}")]
     public async Task<IActionResult> PostSnapshot(string pipelineId, IFormFile imageFile, [FromForm] string? overlayMetadataJson, CancellationToken cancellationToken)
     {
